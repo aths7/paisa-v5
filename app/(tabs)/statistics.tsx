@@ -1,29 +1,25 @@
-import {
-  Alert,
-  Dimensions,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import React, { useEffect, useState } from "react";
-import ScreenWrapper from "@/components/ScreenWrapper";
-import Typo from "@/components/Typo";
-import { BarChart } from "react-native-gifted-charts";
-import { colors, radius, spacingX, spacingY } from "@/constants/theme";
-import Loading from "@/components/Loading";
-import SegmentedControl from "@react-native-segmented-control/segmented-control";
-import { scale, verticalScale } from "@/utils/styling";
 import Header from "@/components/Header";
-import * as Icons from "phosphor-react-native";
+import Loading from "@/components/Loading";
+import ScreenWrapper from "@/components/ScreenWrapper";
+import TransactionList from "@/components/TransactionList";
+import { colors, radius, spacingX, spacingY } from "@/constants/theme";
 import { useAuth } from "@/contexts/authContext";
 import {
   fetchMonthlyStats,
   fetchWeeklyStats,
   fetchYearlyStats,
 } from "@/services/transactionService";
-import TransactionList from "@/components/TransactionList";
+import { scale, verticalScale } from "@/utils/styling";
+import SegmentedControl from "@react-native-segmented-control/segmented-control";
+import React, { useEffect, useState } from "react";
+import {
+  Alert,
+  Dimensions,
+  ScrollView,
+  StyleSheet,
+  View
+} from "react-native";
+import { BarChart } from "react-native-gifted-charts";
 
 const { width: screenWidth } = Dimensions.get("window");
 
@@ -165,14 +161,14 @@ const Analytics = () => {
         <View style={styles.header}>
           <Header
             title="Statistics"
-            // rightIcon={
-            //   <TouchableOpacity style={styles.searchIcon}>
-            //     <Icons.MagnifyingGlass
-            //       size={verticalScale(22)}
-            //       color={colors.white}
-            //     />
-            //   </TouchableOpacity>
-            // }
+          // rightIcon={
+          //   <TouchableOpacity style={styles.searchIcon}>
+          //     <Icons.MagnifyingGlass
+          //       size={verticalScale(22)}
+          //       color={colors.white}
+          //     />
+          //   </TouchableOpacity>
+          // }
           />
         </View>
         <ScrollView
@@ -207,7 +203,7 @@ const Analytics = () => {
                 roundedTop
                 roundedBottom
                 hideRules
-                yAxisLabelPrefix="$"
+                yAxisLabelPrefix="₹"
                 xAxisThickness={0}
                 yAxisThickness={0}
                 yAxisLabelWidth={
@@ -221,9 +217,9 @@ const Analytics = () => {
                 }}
                 noOfSections={3}
                 minHeight={5}
-                // maxValue={100}
-                // animationDuration={500}
-                // isAnimated={true}
+              // maxValue={100}
+              // animationDuration={500}
+              // isAnimated={true}
               />
             ) : (
               <View style={styles.noChart} />

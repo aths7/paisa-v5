@@ -1,37 +1,36 @@
+import BackButton from "@/components/BackButton";
+import Button from "@/components/Button";
+import Header from "@/components/Header";
+import Input from "@/components/Input";
+import ModalWrapper from "@/components/ModalWrapper";
+import Typo from "@/components/Typo";
+import { colors, radius, spacingX, spacingY } from "@/constants/theme";
+import { scale, verticalScale } from "@/utils/styling";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import * as Icons from "phosphor-react-native";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
-import React, { useEffect, useState } from "react";
-import ModalWrapper from "@/components/ModalWrapper";
-import Header from "@/components/Header";
-import BackButton from "@/components/BackButton";
-import { colors, radius, spacingX, spacingY } from "@/constants/theme";
-import Typo from "@/components/Typo";
-import Input from "@/components/Input";
-import { scale, verticalScale } from "@/utils/styling";
-import * as Icons from "phosphor-react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import Button from "@/components/Button";
 
-import { Dropdown } from "react-native-element-dropdown";
-import useFetchData from "@/hooks/useFetchData";
-import { TransactionType, WalletType } from "@/types";
-import { useAuth } from "@/contexts/authContext";
-import { orderBy } from "firebase/firestore";
 import ImageUpload from "@/components/ImageUpload";
 import { expenseCategories, transactionTypes } from "@/constants/data";
+import { useAuth } from "@/contexts/authContext";
+import useFetchData from "@/hooks/useFetchData";
 import {
   createOrUpdateTransaction,
   deleteTransaction,
 } from "@/services/transactionService";
+import { TransactionType, WalletType } from "@/types";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { orderBy } from "firebase/firestore";
+import { Dropdown } from "react-native-element-dropdown";
 
 const TransactionModal = () => {
   const { user } = useAuth();
@@ -55,8 +54,8 @@ const TransactionModal = () => {
     loading: walletLoading,
     error,
   } = user?.uid
-    ? useFetchData<WalletType>("wallets", [orderBy("created", "desc")])
-    : { data: [], loading: false, error: null };
+      ? useFetchData<WalletType>("wallets", [orderBy("created", "desc")])
+      : { data: [], loading: false, error: null };
 
   const [loading, setLoading] = useState(false);
 
@@ -239,7 +238,7 @@ const TransactionModal = () => {
               itemContainerStyle={styles.dropdownItemContainer}
               iconStyle={styles.dropdownIcon}
               data={wallets.map((wallet) => ({
-                label: `${wallet?.name} ($${wallet.amount})`,
+                label: `${wallet?.name} (₹${wallet.amount})`,
                 value: wallet?.id,
               }))}
               maxHeight={300}
