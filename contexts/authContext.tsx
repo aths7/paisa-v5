@@ -40,14 +40,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (error: any) {
             let msg = error.message || "Login failed";
             if (msg.includes("auth/user-not-found")) {
-                msg = "No user found with this email.";
-            } else if (msg.includes("auth/invalid-credential")) {
-                msg = "Incorrect Password :-(";
+                msg = "No account found with this email.";
+            } else if (msg.includes("auth/invalid-credential") || msg.includes("auth/wrong-password")) {
+                msg = "Incorrect email or password.";
+            } else if (msg.includes("auth/invalid-email")) {
+                msg = "Please enter a valid email address.";
+            } else if (msg.includes("auth/too-many-requests")) {
+                msg = "Too many failed attempts. Please try again later or reset your password.";
+            } else if (msg.includes("auth/network-request-failed")) {
+                msg = "Network error. Please check your connection and try again.";
+            } else if (msg.includes("auth/user-disabled")) {
+                msg = "This account has been disabled. Please contact support.";
             }
-            else if (msg.includes("auth/invalid-email")) {
-                msg = "Invalid Email :-(";
-            }
-            return { success: false, message: msg };
+            return { success: false, msg };
         }
     };
     const register = async (email: string, password: string, name: string) => {
@@ -61,16 +66,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             })
             return { success: true };
         } catch (error: any) {
-            let msg = error.message || "Login failed";
+            let msg = error.message || "Registration failed";
             if (msg.includes("auth/email-already-in-use")) {
-                msg = "This email is already in use.";
+                msg = "An account with this email already exists.";
             } else if (msg.includes("auth/weak-password")) {
                 msg = "Password should be at least 6 characters.";
+            } else if (msg.includes("auth/invalid-email")) {
+                msg = "Please enter a valid email address.";
+            } else if (msg.includes("auth/network-request-failed")) {
+                msg = "Network error. Please check your connection and try again.";
             }
-            else if (msg.includes("auth/invalid-email")) {
-                msg = "Invalid Email :-(";
-            }
-            return { success: false, message: msg };
+            return { success: false, msg };
         }
     };
 

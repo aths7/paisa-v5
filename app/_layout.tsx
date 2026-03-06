@@ -68,6 +68,18 @@ function StackLayout() {
           presentation: "modal",
         }}
       />
+      <Stack.Screen
+        name="(modals)/settingsModal"
+        options={{
+          presentation: "modal",
+        }}
+      />
+      <Stack.Screen
+        name="(modals)/privacyPolicyModal"
+        options={{
+          presentation: "modal",
+        }}
+      />
     </Stack>
   );
 }
