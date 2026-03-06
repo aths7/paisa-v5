@@ -21,28 +21,66 @@ import { Router, useRouter } from "expo-router";
 import TransactionList from "@/components/TransactionList";
 import { limit, orderBy } from "firebase/firestore";
 import useFetchData from "@/hooks/useFetchData";
-import { TransactionType } from "@/types";
+import { TransactionType, WalletType } from "@/types";
 import { fetchWeeklyStats } from "@/services/transactionService";
+import Animated, { FadeInDown } from "react-native-reanimated";
+
+type SetupStep = {
+  number: number;
+  label: string;
+  subLabel: string;
+  done: boolean;
+  active: boolean;
+  onPress: () => void;
+};
 
 const Home = () => {
   const { user } = useAuth();
   const router = useRouter();
 
   const constraints = [
-    orderBy("date", "desc"), // Order by creation date in descending order
-    limit(30), // Limit the results to 50 transactions
+    orderBy("date", "desc"),
+    limit(30),
   ];
 
-  // Use the useFetchData hook with the 'transactions' collection and constraints
   const {
     data: recentTransactions,
     loading: transactionsLoading,
     error,
   } = useFetchData<TransactionType>("transactions", constraints);
 
+  const { data: wallets, loading: walletsLoading } = useFetchData<WalletType>(
+    "wallets",
+    [orderBy("created", "desc")]
+  );
+
+  const hasWallets = !walletsLoading && wallets.length > 0;
+  const hasTransactions = !transactionsLoading && recentTransactions.length > 0;
+  const showSetupCard = !walletsLoading && !transactionsLoading && (!hasWallets || !hasTransactions);
+
+  const setupSteps: SetupStep[] = [
+    {
+      number: 1,
+      label: "Create your first wallet",
+      subLabel: "A wallet represents a bank account, cash, or any money source",
+      done: hasWallets,
+      active: !hasWallets,
+      onPress: () => router.push("/(modals)/walletModal"),
+    },
+    {
+      number: 2,
+      label: "Record your first transaction",
+      subLabel: "Log an income or expense to start tracking your finances",
+      done: hasTransactions,
+      active: hasWallets && !hasTransactions,
+      onPress: () => router.push("/(modals)/transactionModal"),
+    },
+  ];
+
   const logout = async () => {
     await signOut(auth);
   };
+
   return (
     <ScreenWrapper>
       <View style={styles.container}>
@@ -76,6 +114,98 @@ const Home = () => {
           <View>
             <HomeCard />
           </View>
+
+          {/* getting started card */}
+          {showSetupCard && (
+            <Animated.View
+              entering={FadeInDown.duration(600).springify().damping(30).mass(3).stiffness(250)}
+              style={styles.setupCard}
+            >
+              <View style={styles.setupHeader}>
+                <Icons.Sparkle
+                  size={verticalScale(18)}
+                  color={colors.primary}
+                  weight="fill"
+                />
+                <Typo size={16} fontWeight={"700"}>
+                  Getting Started
+                </Typo>
+              </View>
+
+              <View style={styles.setupSteps}>
+                {setupSteps.map((step) => (
+                  <View key={step.number} style={styles.stepRow}>
+                    {/* step indicator */}
+                    <View
+                      style={[
+                        styles.stepCircle,
+                        step.done && styles.stepCircleDone,
+                        step.active && styles.stepCircleActive,
+                        !step.done && !step.active && styles.stepCircleInactive,
+                      ]}
+                    >
+                      {step.done ? (
+                        <Icons.Check
+                          size={verticalScale(13)}
+                          color={colors.neutral900}
+                          weight="bold"
+                        />
+                      ) : (
+                        <Typo
+                          size={12}
+                          fontWeight={"700"}
+                          color={step.active ? colors.neutral900 : colors.neutral500}
+                        >
+                          {step.number}
+                        </Typo>
+                      )}
+                    </View>
+
+                    {/* step connector line */}
+                    {step.number < setupSteps.length && (
+                      <View
+                        style={[
+                          styles.stepLine,
+                          step.done && styles.stepLineDone,
+                        ]}
+                      />
+                    )}
+
+                    {/* step text + button */}
+                    <View style={styles.stepContent}>
+                      <Typo
+                        size={14}
+                        fontWeight={"600"}
+                        color={step.done ? colors.neutral500 : step.active ? colors.text : colors.neutral600}
+                        style={step.done ? styles.strikethrough : undefined}
+                      >
+                        {step.label}
+                      </Typo>
+                      {!step.done && (
+                        <Typo size={12} color={colors.neutral500}>
+                          {step.subLabel}
+                        </Typo>
+                      )}
+                    </View>
+
+                    {/* CTA arrow */}
+                    {step.active && (
+                      <TouchableOpacity
+                        onPress={step.onPress}
+                        style={styles.stepButton}
+                      >
+                        <Icons.ArrowRight
+                          size={verticalScale(18)}
+                          color={colors.neutral900}
+                          weight="bold"
+                        />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </Animated.View>
+          )}
 
           <TransactionList
             title={"Recent Transactions"}
@@ -135,5 +265,71 @@ const styles = StyleSheet.create({
     marginTop: spacingY._10,
     paddingBottom: verticalScale(100),
     gap: spacingY._25,
+  },
+  setupCard: {
+    backgroundColor: colors.neutral800,
+    borderRadius: radius._20,
+    borderCurve: "continuous",
+    borderWidth: 1,
+    borderColor: colors.neutral700,
+    padding: spacingX._20,
+    gap: spacingY._15,
+  },
+  setupHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacingX._7,
+  },
+  setupSteps: {
+    gap: spacingY._15,
+  },
+  stepRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacingX._12,
+  },
+  stepCircle: {
+    width: verticalScale(26),
+    height: verticalScale(26),
+    borderRadius: 50,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: verticalScale(1),
+    flexShrink: 0,
+  },
+  stepCircleDone: {
+    backgroundColor: colors.primary,
+  },
+  stepCircleActive: {
+    backgroundColor: colors.primary,
+  },
+  stepCircleInactive: {
+    backgroundColor: colors.neutral700,
+    borderWidth: 1,
+    borderColor: colors.neutral600,
+  },
+  stepLine: {
+    position: "absolute",
+    left: verticalScale(12),
+    top: verticalScale(27),
+    width: 1,
+    height: spacingY._15,
+    backgroundColor: colors.neutral600,
+  },
+  stepLineDone: {
+    backgroundColor: colors.primary,
+  },
+  stepContent: {
+    flex: 1,
+    gap: verticalScale(3),
+  },
+  strikethrough: {
+    textDecorationLine: "line-through",
+  },
+  stepButton: {
+    backgroundColor: colors.primary,
+    borderRadius: radius._10,
+    padding: verticalScale(7),
+    alignSelf: "center",
   },
 });

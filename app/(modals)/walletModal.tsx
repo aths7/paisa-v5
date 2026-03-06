@@ -27,6 +27,7 @@ const WalletModal = () => {
   const [wallet, setWallet] = useState<WalletType>({
     name: "",
     image: null,
+    amount: 0,
   });
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -50,7 +51,7 @@ const WalletModal = () => {
   };
 
   const onSubmit = async () => {
-    let { name, image } = wallet;
+    let { name, image, amount } = wallet;
 
     if (loading) return;
     if (!name.trim() || !image) {
@@ -63,6 +64,7 @@ const WalletModal = () => {
       name,
       image,
       uid: user?.uid,
+      amount: Number(amount) || 0,
     };
     if (oldWallet.id) data.id = oldWallet.id;
 
@@ -137,6 +139,29 @@ const WalletModal = () => {
               placeholder="Upload Image"
             />
           </View>
+
+          {!oldWallet?.id && (
+            <View style={styles.inputContainer}>
+              <View style={styles.balanceLabelRow}>
+                <Typo color={colors.neutral200}>Current Balance</Typo>
+                <Typo color={colors.neutral500} size={14}>(optional)</Typo>
+              </View>
+              <Input
+                keyboardType="numeric"
+                placeholder="0"
+                value={wallet.amount === 0 ? "" : wallet.amount?.toString()}
+                onChangeText={(value) =>
+                  setWallet({
+                    ...wallet,
+                    amount: Number(value.replace(/[^0-9.]/g, "")),
+                  })
+                }
+              />
+              <Typo size={12} color={colors.neutral500}>
+                This is your existing balance — it won't be counted as income
+              </Typo>
+            </View>
+          )}
         </ScrollView>
       </View>
 
@@ -192,5 +217,10 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     gap: spacingY._10,
+  },
+  balanceLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacingX._5,
   },
 });

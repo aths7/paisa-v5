@@ -48,7 +48,7 @@ export const createOrUpdateWallet = async (
     }
 
     if (!walletData.id) {
-      walletToSave.amount = 0;
+      walletToSave.amount = Number(walletData.amount) || 0;
       walletToSave.totalIncome = 0;
       walletToSave.totalExpenses = 0;
       walletToSave.created = new Date();
