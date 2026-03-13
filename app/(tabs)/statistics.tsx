@@ -11,7 +11,8 @@ import {
 } from "@/services/transactionService";
 import { scale, verticalScale } from "@/utils/styling";
 import SegmentedControl from "@react-native-segmented-control/segmented-control";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
   Alert,
   Dimensions,
@@ -106,17 +107,19 @@ const Analytics = () => {
   const [transactions, setTransactions] = useState([]);
   const { user } = useAuth();
 
+  const [refreshKey, setRefreshKey] = useState(0);
+
   useEffect(() => {
-    if (activeIndex == 0) {
-      getWeeklyStats();
-    }
-    if (activeIndex == 1) {
-      getMonthlyStats();
-    }
-    if (activeIndex == 2) {
-      getYearlyStats();
-    }
-  }, [activeIndex]);
+    if (activeIndex == 0) getWeeklyStats();
+    if (activeIndex == 1) getMonthlyStats();
+    if (activeIndex == 2) getYearlyStats();
+  }, [activeIndex, refreshKey]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setRefreshKey((k) => k + 1);
+    }, [])
+  );
 
   const getWeeklyStats = async () => {
     setChartLoading(true);
@@ -203,13 +206,15 @@ const Analytics = () => {
                 roundedTop
                 roundedBottom
                 hideRules
-                yAxisLabelPrefix="₹"
                 xAxisThickness={0}
                 yAxisThickness={0}
-                yAxisLabelWidth={
-                  [1, 2].includes(activeIndex) ? scale(38) : scale(35)
-                }
-                // hideYAxisText
+                yAxisLabelWidth={scale(60)}
+                formatYLabel={(val) => {
+                  const num = Number(val);
+                  if (num >= 100000) return `₹${(num / 100000).toFixed(1)}L`;
+                  if (num >= 1000) return `₹${(num / 1000).toFixed(0)}K`;
+                  return `₹${num}`;
+                }}
                 yAxisTextStyle={{ color: colors.neutral350 }}
                 xAxisLabelTextStyle={{
                   color: colors.neutral350,

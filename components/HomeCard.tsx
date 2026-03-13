@@ -1,4 +1,4 @@
-import { ImageBackground, StyleSheet, Text, View } from "react-native";
+import { ImageBackground, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import React from "react";
 import { scale, verticalScale } from "@/utils/styling";
 import Typo from "./Typo";
@@ -7,7 +7,9 @@ import * as Icons from "phosphor-react-native";
 import useFetchData from "@/hooks/useFetchData";
 import { WalletType } from "@/types";
 import { orderBy } from "firebase/firestore";
+import { useRouter } from "expo-router";
 const HomeCard = () => {
+  const router = useRouter();
   const {
     data: wallets,
     loading: walletLoading,
@@ -40,11 +42,13 @@ const HomeCard = () => {
             <Typo color={colors.neutral800} size={17} fontWeight={"500"}>
               Total Balance
             </Typo>
-            <Icons.DotsThreeOutline
-              size={verticalScale(23)}
-              color={colors.black}
-              weight="fill"
-            />
+            <TouchableOpacity onPress={() => router.push("/(tabs)/wallet")}>
+              <Icons.DotsThreeOutline
+                size={verticalScale(23)}
+                color={colors.black}
+                weight="fill"
+              />
+            </TouchableOpacity>
           </View>
           <Typo color={colors.black} size={30} fontWeight={"bold"}>
             {/* $ 234.23 */}₹{" "}

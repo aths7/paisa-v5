@@ -9,7 +9,9 @@ import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { scale, verticalScale } from "@/utils/styling";
 import * as Icons from "phosphor-react-native";
 import { colors, spacingY } from "@/constants/theme";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 function CustomTabs({ state, descriptors, navigation }: BottomTabBarProps) {
+  const insets = useSafeAreaInsets();
   const tabbarIcons: any = {
     index: (isFocused: boolean) => (
       <Icons.House
@@ -42,7 +44,7 @@ function CustomTabs({ state, descriptors, navigation }: BottomTabBarProps) {
   };
 
   return (
-    <View style={styles.tabbar}>
+    <View style={[styles.tabbar, { paddingBottom: insets.bottom }]}>
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
         const label =

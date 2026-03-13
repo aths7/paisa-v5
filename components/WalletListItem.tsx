@@ -38,12 +38,18 @@ const WalletListItem = ({
     >
       <TouchableOpacity style={styles.container} onPress={handleOpen}>
         <View style={styles.imageContainer}>
-          <Image
-            style={{ flex: 1 }}
-            source={item.image}
-            contentFit="cover"
-            transition={100}
-          />
+          {item.image && typeof item.image === "string" && !item.image.startsWith("http") ? (
+            <View style={styles.emojiContainer}>
+              <Typo size={26}>{item.image}</Typo>
+            </View>
+          ) : (
+            <Image
+              style={{ flex: 1 }}
+              source={item.image}
+              contentFit="cover"
+              transition={100}
+            />
+          )}
         </View>
 
         <View style={styles.nameContainer}>
@@ -87,5 +93,10 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 2,
     marginLeft: spacingX._10,
+  },
+  emojiContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

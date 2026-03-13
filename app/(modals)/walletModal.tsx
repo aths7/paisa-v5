@@ -1,27 +1,29 @@
+import BackButton from "@/components/BackButton";
+import Button from "@/components/Button";
+import Header from "@/components/Header";
+import ImageUpload from "@/components/ImageUpload";
+import Input from "@/components/Input";
+import ModalWrapper from "@/components/ModalWrapper";
+import Typo from "@/components/Typo";
+import { colors, spacingX, spacingY } from "@/constants/theme";
+import { useAuth } from "@/contexts/authContext";
+import { createOrUpdateWallet, deleteWallet } from "@/services/walletService";
+import { WalletType } from "@/types";
+import { scale, verticalScale } from "@/utils/styling";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import * as Icons from "phosphor-react-native";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   ScrollView,
   StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+  View
 } from "react-native";
-import React, { useEffect, useState } from "react";
-import ScreenWrapper from "@/components/ScreenWrapper";
-import ModalWrapper from "@/components/ModalWrapper";
-import Typo from "@/components/Typo";
-import Header from "@/components/Header";
-import { colors, radius, spacingX, spacingY } from "@/constants/theme";
-import Button from "@/components/Button";
-import Input from "@/components/Input";
-import ImageUpload from "@/components/ImageUpload";
-import { scale, verticalScale } from "@/utils/styling";
-import { createOrUpdateWallet, deleteWallet } from "@/services/walletService";
-import { useAuth } from "@/contexts/authContext";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { WalletType } from "@/types";
-import BackButton from "@/components/BackButton";
-import * as Icons from "phosphor-react-native";
+
+const WALLET_ICONS = ["💰", "🏦", "💳", "🪙", "💵", "🏧", "💎", "📊", "🛍️", "📈", "🏠", "🚗", "✈️", "🎓", "💼", "🎮", "🍔", "🏋️", "⚕️", "🎵"];
+
+const getRandomWalletIcon = () =>
+  WALLET_ICONS[Math.floor(Math.random() * WALLET_ICONS.length)];
 
 const WalletModal = () => {
   const [wallet, setWallet] = useState<WalletType>({
@@ -54,18 +56,20 @@ const WalletModal = () => {
     let { name, image, amount } = wallet;
 
     if (loading) return;
-    if (!name.trim() || !image) {
-      Alert.alert("Wallet", "Please fill all the fields!");
+    if (!name.trim()) {
+      Alert.alert("Wallet", "Please enter a wallet name!");
       return;
     }
+
+    const finalImage = image || getRandomWalletIcon();
 
     setLoading(true);
     let data: WalletType = {
       name,
-      image,
+      image: finalImage,
       uid: user?.uid,
-      amount: Number(amount) || 0,
     };
+    if (!oldWallet.id) data.amount = Number(amount) || 0;
     if (oldWallet.id) data.id = oldWallet.id;
 
     const res = await createOrUpdateWallet(data);
@@ -131,7 +135,10 @@ const WalletModal = () => {
             />
           </View>
           <View style={styles.inputContainer}>
-            <Typo color={colors.neutral200}>Wallet Icon</Typo>
+            <View style={styles.balanceLabelRow}>
+              <Typo color={colors.neutral200}>Wallet Icon</Typo>
+              <Typo color={colors.neutral500} size={14}>(optional)</Typo>
+            </View>
             <ImageUpload
               file={wallet.image}
               onSelect={onSelectImage}
@@ -163,10 +170,10 @@ const WalletModal = () => {
             </View>
           )}
         </ScrollView>
-      </View>
+      </View >
 
       {/* footer */}
-      <View style={styles.footer}>
+      < View style={styles.footer} >
         {oldWallet?.id && !loading && (
           <Button
             style={{
@@ -187,8 +194,8 @@ const WalletModal = () => {
             {oldWallet?.id ? "Update Wallet" : "Add Wallet"}
           </Typo>
         </Button>
-      </View>
-    </ModalWrapper>
+      </View >
+    </ModalWrapper >
   );
 };
 

@@ -37,6 +37,8 @@ const Login = () => {
     setLoading(false);
     if (!res.success) {
       Alert.alert("Login", res.msg);
+    } else {
+      router.replace("/(tabs)");
     }
   };
 

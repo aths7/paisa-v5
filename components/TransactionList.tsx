@@ -96,8 +96,16 @@ const TransactionItem = ({
   index,
   handleClick,
 }: TransactionItemProps) => {
+  const defaultExpenseCategory = {
+    label: "Other",
+    value: "other",
+    icon: Icons.Tag,
+    bgColor: colors.neutral500,
+  };
   let category =
-    item?.type == "income" ? incomeCategory : expenseCategories[item.category!];
+    item?.type == "income"
+      ? incomeCategory
+      : expenseCategories[item.category!] ?? defaultExpenseCategory;
   const IconComponent = category.icon;
 
   let date = (item?.date as Timestamp)?.toDate()?.toLocaleDateString("en-GB", {
