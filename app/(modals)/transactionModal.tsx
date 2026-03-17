@@ -19,6 +19,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ImageUpload from "@/components/ImageUpload";
 import { expenseCategories, transactionTypes } from "@/constants/data";
@@ -36,6 +37,7 @@ import { Dropdown } from "react-native-element-dropdown";
 const TransactionModal = () => {
   const { user } = useAuth();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   type paramType = {
     id: string;
     type: string;
@@ -191,6 +193,7 @@ const TransactionModal = () => {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? insets.top : 0}
       >
         <View style={styles.container}>
           <Header

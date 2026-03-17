@@ -1,9 +1,7 @@
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
-  Platform,
 } from "react-native";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { scale, verticalScale } from "@/utils/styling";
@@ -114,7 +112,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   tabbarItem: {
-    marginBottom: Platform.OS == "ios" ? spacingY._10 : spacingY._5,
     justifyContent: "center",
     alignItems: "center",
   },
