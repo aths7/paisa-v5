@@ -11,6 +11,12 @@ import { collection } from "firebase/firestore";
 import { uploadFileToCloudinary } from "./imageService";
 import { ResponseType, WalletType } from "@/types";
 import { auth, firestore } from "@/config/firebase";
+import {
+  deriveKey,
+  encryptDocument,
+  WALLET_STRING_FIELDS,
+  WALLET_NUMERIC_FIELDS,
+} from "./encryptionService";
 
 const getUserId = () => {
   const uid = auth.currentUser?.uid;
@@ -60,9 +66,15 @@ export const createOrUpdateWallet = async (
       ? doc(firestore, "users", uid, "wallets", walletData.id)
       : doc(collection(firestore, "users", uid, "wallets"));
 
-    await setDoc(walletRef, walletToSave, { merge: true }); // merge: true updates only the data provided
-    
-    console.log("here 3")
+    const key = deriveKey(uid);
+    const encryptedWallet = encryptDocument(
+      walletToSave,
+      WALLET_STRING_FIELDS,
+      WALLET_NUMERIC_FIELDS,
+      key
+    );
+
+    await setDoc(walletRef, encryptedWallet, { merge: true });
 
     return {
       success: true,

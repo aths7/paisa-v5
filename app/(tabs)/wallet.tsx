@@ -14,7 +14,8 @@ import Button from "@/components/Button";
 import * as Icons from "phosphor-react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import Header from "@/components/Header";
-import useFetchData from "@/hooks/useFetchData";
+import useDecryptedData from "@/hooks/useDecryptedData";
+import { WALLET_STRING_FIELDS, WALLET_NUMERIC_FIELDS } from "@/services/encryptionService";
 import { WalletType } from "@/types";
 import { orderBy } from "firebase/firestore";
 import Loading from "@/components/Loading";
@@ -25,9 +26,12 @@ const Wallet = () => {
     data: wallets,
     loading,
     error,
-  } = useFetchData<WalletType>("wallets", [
-    orderBy("created", "desc"),
-  ]);
+  } = useDecryptedData<WalletType>(
+    "wallets",
+    WALLET_STRING_FIELDS,
+    WALLET_NUMERIC_FIELDS,
+    [orderBy("created", "desc")]
+  );
 
   const getTotalBalance = () =>
     wallets.reduce((total, item) => {

@@ -18,6 +18,15 @@ import { createOrUpdateWallet } from "./walletService";
 import { getLast12Months, getLast7Days, getYearsRange } from "@/utils/common";
 import { scale } from "@/utils/styling";
 import { colors } from "@/constants/theme";
+import {
+  deriveKey,
+  decryptDocument,
+  encryptDocument,
+  TRANSACTION_STRING_FIELDS,
+  TRANSACTION_NUMERIC_FIELDS,
+  WALLET_STRING_FIELDS,
+  WALLET_NUMERIC_FIELDS,
+} from "./encryptionService";
 
 const getUserId = () => {
   const uid = auth.currentUser?.uid;
@@ -32,6 +41,7 @@ export const createOrUpdateTransaction = async (
 ) => {
   try {
     const uid = getUserId();
+    const key = deriveKey(uid);
     const { id, type, amount, walletId, image } = transactionData;
 
     if (!amount || amount <= 0 || !type) {
@@ -45,11 +55,17 @@ export const createOrUpdateTransaction = async (
 
     // do this while updating: Fetch the original transaction if updating
     if (id) {
-      // Fetch the old transaction data
+      // Fetch the old transaction data and decrypt it
       const oldTransactionSnapshot = await getDoc(
         doc(firestore, "users", uid, "transactions", id)
       );
-      const oldTransaction = oldTransactionSnapshot.data() as TransactionType;
+      const rawOldTransaction = oldTransactionSnapshot.data() as TransactionType;
+      const oldTransaction = decryptDocument(
+        rawOldTransaction,
+        TRANSACTION_STRING_FIELDS,
+        TRANSACTION_NUMERIC_FIELDS,
+        key
+      );
       const oldWalletId = oldTransaction.walletId || "";
 
       const shouldRevertOriginal =
@@ -72,7 +88,12 @@ export const createOrUpdateTransaction = async (
           const oldWalletRef = doc(firestore, "users", uid, "wallets", oldWalletId);
           const oldWalletSnap = await getDoc(oldWalletRef);
           if (oldWalletSnap.exists()) {
-            const oldWalletData = oldWalletSnap.data() as WalletType;
+            const oldWalletData = decryptDocument(
+              oldWalletSnap.data() as WalletType,
+              WALLET_STRING_FIELDS,
+              WALLET_NUMERIC_FIELDS,
+              key
+            );
             const revertType = oldTransaction.type === "income" ? "totalIncome" : "totalExpenses";
             const revertAmount = oldTransaction.type === "income"
               ? -Number(oldTransaction.amount!)
@@ -113,12 +134,19 @@ export const createOrUpdateTransaction = async (
       transactionData.image = imageUploadResponse.data;
     }
 
-    // Create or update the transaction
+    // Encrypt transaction data before writing to Firestore
     const transactionRef = id
       ? doc(firestore, "users", uid, "transactions", id)
       : doc(collection(firestore, "users", uid, "transactions"));
     transactionData.uid = transactionData.uid || uid;
-    await setDoc(transactionRef, transactionData, { merge: true });
+
+    const encryptedTransaction = encryptDocument(
+      transactionData,
+      TRANSACTION_STRING_FIELDS,
+      TRANSACTION_NUMERIC_FIELDS,
+      key
+    );
+    await setDoc(transactionRef, encryptedTransaction, { merge: true });
 
     return {
       success: true,
@@ -137,7 +165,9 @@ export const updateWalletForNewTransaction = async (
 ) => {
   try {
     const uid = getUserId();
-    // Fetch the wallet
+    const key = deriveKey(uid);
+
+    // Fetch and decrypt the wallet
     const walletRef = doc(firestore, "users", uid, "wallets", walletId);
     const walletSnapshot = await getDoc(walletRef);
 
@@ -146,13 +176,18 @@ export const updateWalletForNewTransaction = async (
       return { success: false, msg: "Wallet not found!" };
     }
 
-    const walletData = walletSnapshot.data() as WalletType;
+    const walletData = decryptDocument(
+      walletSnapshot.data() as WalletType,
+      WALLET_STRING_FIELDS,
+      WALLET_NUMERIC_FIELDS,
+      key
+    );
 
     // Adjust wallet balance and totals based on the transaction type
     const updatedWalletAmount =
       type === "income"
-        ? Number(walletData.amount!) + amount // Add income to wallet balance
-        : Number(walletData.amount!) - amount; // Subtract expense from wallet balance
+        ? Number(walletData.amount!) + amount
+        : Number(walletData.amount!) - amount;
 
     const updateType = type === "income" ? "totalIncome" : "totalExpenses";
     const updatedTotals =
@@ -160,8 +195,9 @@ export const updateWalletForNewTransaction = async (
         ? Number(walletData.totalIncome!) + amount
         : Number(walletData.totalExpenses!) + amount;
 
-    // Update the wallet
-    await updateDoc(walletRef, {
+    // Write via createOrUpdateWallet so the new amounts are encrypted
+    await createOrUpdateWallet({
+      id: walletId,
       amount: updatedWalletAmount,
       [updateType]: updatedTotals,
     });
@@ -180,36 +216,37 @@ export const revertAndUpdateWallets = async (
 ) => {
   try {
     const uid = getUserId();
-    // Fetch the original wallet data before updating the amounts
+    const key = deriveKey(uid);
+
+    // Fetch and decrypt the original wallet
     const originalWalletSnapshot = await getDoc(
       doc(firestore, "users", uid, "wallets", oldTransaction.walletId)
     );
-    const originalWallet = originalWalletSnapshot.data() as WalletType;
+    const originalWallet = decryptDocument(
+      originalWalletSnapshot.data() as WalletType,
+      WALLET_STRING_FIELDS,
+      WALLET_NUMERIC_FIELDS,
+      key
+    );
 
-    // Fetch the new wallet data
+    // Fetch and decrypt the new wallet
     let newWalletSnapshot = await getDoc(
       doc(firestore, "users", uid, "wallets", newWalletId)
     );
-    let newWallet = newWalletSnapshot.data() as WalletType;
-
-    // console.log("original transaction type: ", oldTransaction?.type);
-    // console.log("original wallet amount: ", originalWallet?.amount);
-    // console.log("original wallet totalIncome: ", originalWallet.totalIncome);
-    // console.log(
-    //   "original wallet totalExpenses: ",
-    //   originalWallet.totalExpenses
-    // );
-    // console.log("--------------------------->");
+    let newWallet = decryptDocument(
+      newWalletSnapshot.data() as WalletType,
+      WALLET_STRING_FIELDS,
+      WALLET_NUMERIC_FIELDS,
+      key
+    );
 
     const revertType =
       oldTransaction.type == "income" ? "totalIncome" : "totalExpenses";
 
-    // Revert the previous transaction's effect on wallet balance and income/expense totals
-    // the amount that we need to add or subtract
     const revertIncomeExpense: number =
       oldTransaction.type == "income"
-        ? -Number(oldTransaction.amount!) // Subtract income from wallet balance
-        : Number(oldTransaction.amount!); // Add back expense to wallet balance
+        ? -Number(oldTransaction.amount!)
+        : Number(oldTransaction.amount!);
 
     const revertedWalletAmount =
       Number(originalWallet.amount!) + Number(revertIncomeExpense);
@@ -217,53 +254,36 @@ export const revertAndUpdateWallets = async (
     const revertedIncomeExpenseAmount =
       Number(originalWallet[revertType]!) - Number(oldTransaction.amount!);
 
-    // console.log("new transaction type: ", newTransactionType);
-    // console.log("reverted wallet amount: ", revertedWalletAmount);
-    // console.log(
-    //   "reverted wallet total income/expenses: ",
-    //   revertedIncomeExpenseAmount
-    // );
-    // console.log("revert type: ", revertType);
-    // console.log("------------------------------------>");
-
-    // Update the original wallet
+    // Update the original wallet (createOrUpdateWallet handles re-encryption)
     await createOrUpdateWallet({
       id: oldTransaction.walletId,
       amount: revertedWalletAmount,
       [revertType]: revertedIncomeExpenseAmount,
     });
 
-    ////////////////////////////////////////////////////////////////////////////
-
-    // the new wallet could be the same wallet and we will need the updated wallet amounts
-    // so we will need to refetch the wallet
+    // Re-fetch the new wallet (may be same wallet — get updated amounts)
     newWalletSnapshot = await getDoc(
       doc(firestore, "users", uid, "wallets", newWalletId)
     );
-    newWallet = newWalletSnapshot.data() as WalletType;
+    newWallet = decryptDocument(
+      newWalletSnapshot.data() as WalletType,
+      WALLET_STRING_FIELDS,
+      WALLET_NUMERIC_FIELDS,
+      key
+    );
 
     // Apply the new transaction to the new wallet
     const updateType =
       newTransactionType == "income" ? "totalIncome" : "totalExpenses";
     const updateWalletAmount: number =
       newTransactionType == "income"
-        ? Number(newTransactionAmount) // Add income to wallet balance
-        : -Number(newTransactionAmount); // Subtract expense from wallet balance
+        ? Number(newTransactionAmount)
+        : -Number(newTransactionAmount);
 
     const newWalletAmount = Number(newWallet.amount!) + updateWalletAmount;
-
     const newIncomeExpenseAmount =
       Number(newWallet[updateType]!) + Number(newTransactionAmount);
 
-    // console.log("new transaction type: ", newTransactionType);
-    // console.log("updated wallet amount: ", updateWalletAmount);
-    // console.log(
-    //   "updated wallet total income/expenses: ",
-    //   newIncomeExpenseAmount
-    // );
-    // console.log("update type: ", updateType);
-
-    // Update the new wallet
     await createOrUpdateWallet({
       id: newWalletId,
       amount: newWalletAmount,
@@ -272,7 +292,6 @@ export const revertAndUpdateWallets = async (
     return { success: true };
   } catch (error) {
     console.error("Error updating wallets:", error);
-    // You can log or handle the error as needed here
     return { success: false, msg: "Could not update the wallet!" };
   }
 };
@@ -283,7 +302,9 @@ export const deleteTransaction = async (
 ) => {
   try {
     const uid = getUserId();
-    // Step 1: Fetch the transaction to retrieve its details
+    const key = deriveKey(uid);
+
+    // Fetch and decrypt the transaction
     const transactionRef = doc(
       firestore,
       "users",
@@ -297,12 +318,18 @@ export const deleteTransaction = async (
       return { success: false, msg: "Transaction not found" };
     }
 
-    const transactionData = transactionSnapshot.data();
+    const rawTransactionData = transactionSnapshot.data();
+    const transactionData = decryptDocument(
+      rawTransactionData as TransactionType,
+      TRANSACTION_STRING_FIELDS,
+      TRANSACTION_NUMERIC_FIELDS,
+      key
+    );
     const transactionType = transactionData?.type;
     const transactionAmount = Number(transactionData?.amount);
     const txWalletId = transactionData?.walletId || "";
 
-    // Step 2: Update wallet if the transaction was linked to one
+    // Update wallet if the transaction was linked to one
     if (txWalletId) {
       const walletRef = doc(firestore, "users", uid, "wallets", txWalletId);
       const walletSnapshot = await getDoc(walletRef);
@@ -311,15 +338,19 @@ export const deleteTransaction = async (
         return { success: false, msg: "Wallet not found" };
       }
 
-      const walletData = walletSnapshot.data();
+      const walletData = decryptDocument(
+        walletSnapshot.data() as WalletType,
+        WALLET_STRING_FIELDS,
+        WALLET_NUMERIC_FIELDS,
+        key
+      );
 
-      // Determine the field to update based on transaction type
       const updateType =
         transactionType === "income" ? "totalIncome" : "totalExpenses";
       const newWalletAmount =
-        walletData?.amount! -
+        Number(walletData.amount!) -
         (transactionType === "income" ? transactionAmount : -transactionAmount);
-      const updatedTotals = walletData[updateType] - transactionAmount;
+      const updatedTotals = Number(walletData[updateType]!) - transactionAmount;
 
       await createOrUpdateWallet({
         id: txWalletId,
@@ -328,7 +359,7 @@ export const deleteTransaction = async (
       });
     }
 
-    // Step 3: Delete the transaction from Firestore
+    // Delete the transaction from Firestore
     await deleteDoc(transactionRef);
 
     return { success: true, msg: "Transaction deleted and wallet updated" };
@@ -341,16 +372,16 @@ export const deleteTransaction = async (
   }
 };
 
-/// statistics
+/// statistics — queries Firestore then decrypts before aggregating
 
 export const fetchWeeklyStats = async (uid: string): Promise<ResponseType> => {
   try {
+    const key = deriveKey(uid);
     const db = firestore;
     const today = new Date();
     const sevenDaysAgo = new Date(today);
     sevenDaysAgo.setDate(today.getDate() - 7);
 
-    // Fetch transactions within the last 7 days for the specified user
     const transactionsQuery = query(
       collection(db, "users", uid, "transactions"),
       where("date", ">=", Timestamp.fromDate(sevenDaysAgo)),
@@ -362,28 +393,28 @@ export const fetchWeeklyStats = async (uid: string): Promise<ResponseType> => {
     const weeklyData = getLast7Days();
     const transactions: TransactionType[] = [];
 
-    // Map transactions to the correct day in weeklyData and build the transactions array
     querySnapshot.forEach((doc) => {
-      const transaction = doc.data() as TransactionType;
-      transaction.id = doc.id; // Include document ID in the transaction data
+      const raw = { id: doc.id, ...doc.data() } as TransactionType;
+      const transaction = decryptDocument(
+        raw,
+        TRANSACTION_STRING_FIELDS,
+        TRANSACTION_NUMERIC_FIELDS,
+        key
+      );
       transactions.push(transaction);
 
       const transactionDate = (transaction.date as Timestamp)
         .toDate()
         .toISOString()
-        .split("T")[0]; // as Mon, Tue
+        .split("T")[0];
       const dayData = weeklyData.find((day) => day.date === transactionDate);
 
       if (dayData) {
-        if (transaction.type === "income") dayData.income += transaction.amount;
-        else if (transaction.type === "expense")
-          dayData.expense += transaction.amount;
+        if (transaction.type === "income") dayData.income += Number(transaction.amount);
+        else if (transaction.type === "expense") dayData.expense += Number(transaction.amount);
       }
     });
 
-    // flatMap takes each day’s data and creates two entries
-    // — one for income and one for expense
-    // — then flattens these entries into a single array
     const stats = weeklyData.flatMap((day) => [
       {
         value: day.income,
@@ -398,30 +429,21 @@ export const fetchWeeklyStats = async (uid: string): Promise<ResponseType> => {
       },
     ]);
 
-    return {
-      success: true,
-      data: {
-        stats,
-        transactions, // Include all transaction details
-      },
-    };
+    return { success: true, data: { stats, transactions } };
   } catch (error) {
     console.error("Error fetching weekly transactions:", error);
-    return {
-      success: false,
-      msg: "Failed to fetch weekly transactions",
-    };
+    return { success: false, msg: "Failed to fetch weekly transactions" };
   }
 };
 
 export const fetchMonthlyStats = async (uid: string): Promise<ResponseType> => {
   try {
+    const key = deriveKey(uid);
     const db = firestore;
     const today = new Date();
     const twelveMonthsAgo = new Date(today);
     twelveMonthsAgo.setMonth(today.getMonth() - 12);
 
-    // Define query to fetch transactions in the last 12 months
     const transactionsQuery = query(
       collection(db, "users", uid, "transactions"),
       where("date", ">=", Timestamp.fromDate(twelveMonthsAgo)),
@@ -433,66 +455,55 @@ export const fetchMonthlyStats = async (uid: string): Promise<ResponseType> => {
     const monthlyData = getLast12Months();
     const transactions: TransactionType[] = [];
 
-    // Process transactions to calculate income and expense for each month
     querySnapshot.forEach((doc) => {
-      const transaction = doc.data() as TransactionType;
-      transaction.id = doc.id; // Include document ID in transaction data
+      const raw = { id: doc.id, ...doc.data() } as TransactionType;
+      const transaction = decryptDocument(
+        raw,
+        TRANSACTION_STRING_FIELDS,
+        TRANSACTION_NUMERIC_FIELDS,
+        key
+      );
       transactions.push(transaction);
 
       const transactionDate = (transaction.date as Timestamp).toDate();
-      const monthName = transactionDate.toLocaleString("default", {
-        month: "short",
-      });
+      const monthName = transactionDate.toLocaleString("default", { month: "short" });
       const shortYear = transactionDate.getFullYear().toString().slice(-2);
       const monthData = monthlyData.find(
         (month) => month.month === `${monthName} ${shortYear}`
       );
 
       if (monthData) {
-        if (transaction.type === "income") {
-          monthData.income += transaction.amount;
-        } else if (transaction.type === "expense") {
-          monthData.expense += transaction.amount;
-        }
+        if (transaction.type === "income") monthData.income += Number(transaction.amount);
+        else if (transaction.type === "expense") monthData.expense += Number(transaction.amount);
       }
     });
 
-    // Reformat monthlyData for the bar chart with income and expense entries for each month
     const stats = monthlyData.flatMap((month) => [
       {
         value: month.income,
         label: month.month,
         spacing: scale(4),
         labelWidth: scale(46),
-        frontColor: colors.primary, // Income bar color
+        frontColor: colors.primary,
       },
       {
         value: month.expense,
-        frontColor: colors.rose, // Expense bar color
+        frontColor: colors.rose,
       },
     ]);
 
-    return {
-      success: true,
-      data: {
-        stats,
-        transactions, // Include all transaction details
-      },
-    };
+    return { success: true, data: { stats, transactions } };
   } catch (error) {
     console.error("Error fetching monthly transactions:", error);
-    return {
-      success: false,
-      msg: "Failed to fetch monthly transactions",
-    };
+    return { success: false, msg: "Failed to fetch monthly transactions" };
   }
 };
 
 export const fetchYearlyStats = async (uid: string): Promise<ResponseType> => {
   try {
+    const key = deriveKey(uid);
     const db = firestore;
 
-    // Fetch all transactions for the specified user
     const transactionsQuery = query(
       collection(db, "users", uid, "transactions"),
       orderBy("date", "desc")
@@ -501,7 +512,6 @@ export const fetchYearlyStats = async (uid: string): Promise<ResponseType> => {
     const querySnapshot = await getDocs(transactionsQuery);
     const transactions: TransactionType[] = [];
 
-    // Find the first and last year from transactions
     const firstTransaction = querySnapshot.docs.reduce((earliest, doc) => {
       const transactionDate = doc.data().date.toDate();
       return transactionDate < earliest ? transactionDate : earliest;
@@ -509,59 +519,46 @@ export const fetchYearlyStats = async (uid: string): Promise<ResponseType> => {
 
     const firstYear = firstTransaction.getFullYear();
     const currentYear = new Date().getFullYear();
-
-    // Initialize yearly data range
     const yearlyData = getYearsRange(firstYear, currentYear);
 
-    // Process transactions to calculate income and expense for each year
     querySnapshot.forEach((doc) => {
-      const transaction = doc.data() as TransactionType;
-      transaction.id = doc.id; // Include document ID in transaction data
+      const raw = { id: doc.id, ...doc.data() } as TransactionType;
+      const transaction = decryptDocument(
+        raw,
+        TRANSACTION_STRING_FIELDS,
+        TRANSACTION_NUMERIC_FIELDS,
+        key
+      );
       transactions.push(transaction);
 
-      const transactionYear = (transaction.date as Timestamp)
-        .toDate()
-        .getFullYear();
+      const transactionYear = (transaction.date as Timestamp).toDate().getFullYear();
       const yearData = yearlyData.find(
         (item: any) => item.year === transactionYear.toString()
       );
 
       if (yearData) {
-        if (transaction.type === "income") {
-          yearData.income += transaction.amount;
-        } else if (transaction.type === "expense") {
-          yearData.expense += transaction.amount;
-        }
+        if (transaction.type === "income") yearData.income += Number(transaction.amount);
+        else if (transaction.type === "expense") yearData.expense += Number(transaction.amount);
       }
     });
 
-    // Reformat yearlyData for the bar chart with income and expense entries for each year
     const stats = yearlyData.flatMap((year: any) => [
       {
         value: year.income,
         label: year.year,
         spacing: scale(4),
         labelWidth: scale(35),
-        frontColor: colors.primary, // Income bar color
+        frontColor: colors.primary,
       },
       {
         value: year.expense,
-        frontColor: colors.rose, // Expense bar color
+        frontColor: colors.rose,
       },
     ]);
 
-    return {
-      success: true,
-      data: {
-        stats,
-        transactions, // Include all transaction details
-      },
-    };
+    return { success: true, data: { stats, transactions } };
   } catch (error) {
     console.error("Error fetching yearly transactions:", error);
-    return {
-      success: false,
-      msg: "Failed to fetch yearly transactions",
-    };
+    return { success: false, msg: "Failed to fetch yearly transactions" };
   }
 };

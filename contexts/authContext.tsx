@@ -5,6 +5,8 @@ import { router } from "expo-router";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { createContext, useContext, useEffect, useState } from "react";
+import { deriveKey, encryptField, decryptField } from "@/services/encryptionService";
+import { migrateExistingData } from "@/utils/migrateToEncryption";
 
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -23,6 +25,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     name: firebaseUser.displayName,
                 });
                 updateUserData(firebaseUser.uid);
+                // Encrypt any existing plaintext data (no-op if already encrypted)
+                migrateExistingData(firebaseUser.uid);
                 router.replace("/(tabs)");
             } else {
                 setUser(null);
@@ -58,10 +62,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const register = async (email: string, password: string, name: string) => {
         try {
             let response = await createUserWithEmailAndPassword(auth, email, password);
-            await setDoc(doc(firestore, "users", response?.user?.uid), {
-                name,
+            const uid = response?.user?.uid;
+            const key = deriveKey(uid);
+            await setDoc(doc(firestore, "users", uid), {
+                name: encryptField(name, key),
                 email,
-                uid: response?.user?.uid,
+                uid,
                 createdAt: new Date(),
             })
             return { success: true };
@@ -86,9 +92,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
                 const data = docSnap.data();
+                const key = deriveKey(uid);
+                let displayName = data.name || null;
+                // Decrypt name if it looks like ciphertext (migrated or newly registered users)
+                if (displayName && typeof displayName === "string" && displayName.length > 20) {
+                    try {
+                        displayName = decryptField(displayName, key);
+                    } catch {
+                        // Leave as-is if decryption fails (e.g. plaintext legacy data)
+                    }
+                }
                 const userData: UserType = {
                     uid: data?.uid,
-                    name: data.name || null,
+                    name: displayName,
                     email: data.email || null,
                     image: data.image || null,
                 };

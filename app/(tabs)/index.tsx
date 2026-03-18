@@ -20,7 +20,8 @@ import { useAuth } from "@/contexts/authContext";
 import { Router, useRouter } from "expo-router";
 import TransactionList from "@/components/TransactionList";
 import { limit, orderBy } from "firebase/firestore";
-import useFetchData from "@/hooks/useFetchData";
+import useDecryptedData from "@/hooks/useDecryptedData";
+import { TRANSACTION_STRING_FIELDS, TRANSACTION_NUMERIC_FIELDS, WALLET_STRING_FIELDS, WALLET_NUMERIC_FIELDS } from "@/services/encryptionService";
 import { TransactionType, WalletType } from "@/types";
 import { fetchWeeklyStats } from "@/services/transactionService";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -47,10 +48,17 @@ const Home = () => {
     data: recentTransactions,
     loading: transactionsLoading,
     error,
-  } = useFetchData<TransactionType>("transactions", constraints);
+  } = useDecryptedData<TransactionType>(
+    "transactions",
+    TRANSACTION_STRING_FIELDS,
+    TRANSACTION_NUMERIC_FIELDS,
+    constraints
+  );
 
-  const { data: wallets, loading: walletsLoading } = useFetchData<WalletType>(
+  const { data: wallets, loading: walletsLoading } = useDecryptedData<WalletType>(
     "wallets",
+    WALLET_STRING_FIELDS,
+    WALLET_NUMERIC_FIELDS,
     [orderBy("created", "desc")]
   );
 

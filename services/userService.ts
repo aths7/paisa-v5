@@ -11,6 +11,11 @@ import {
 } from "firebase/firestore";
 import { deleteUser } from "firebase/auth";
 import { uploadFileToCloudinary } from "./imageService";
+import {
+  deriveKey,
+  encryptField,
+  USER_STRING_FIELDS,
+} from "./encryptionService";
 
 export const updateUser = async (
   uid: string,
@@ -34,9 +39,17 @@ export const updateUser = async (
     }
 
     const userRef = doc(firestore, "users", uid);
+    const key = deriveKey(uid);
 
-    // Update the user document with the provided updatedData
-    await updateDoc(userRef, updatedData);
+    // Encrypt sensitive fields before writing
+    const dataToWrite = { ...updatedData } as any;
+    for (const f of USER_STRING_FIELDS) {
+      if (dataToWrite[f] !== undefined && dataToWrite[f] !== null) {
+        dataToWrite[f] = encryptField(dataToWrite[f], key);
+      }
+    }
+
+    await updateDoc(userRef, dataToWrite);
 
     // Fetch the updated user data
     const updatedUserDoc = await getDoc(userRef);

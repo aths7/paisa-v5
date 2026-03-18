@@ -4,7 +4,8 @@ import { scale, verticalScale } from "@/utils/styling";
 import Typo from "./Typo";
 import { colors, spacingX, spacingY } from "@/constants/theme";
 import * as Icons from "phosphor-react-native";
-import useFetchData from "@/hooks/useFetchData";
+import useDecryptedData from "@/hooks/useDecryptedData";
+import { WALLET_STRING_FIELDS, WALLET_NUMERIC_FIELDS } from "@/services/encryptionService";
 import { WalletType } from "@/types";
 import { orderBy } from "firebase/firestore";
 import { useRouter } from "expo-router";
@@ -14,9 +15,12 @@ const HomeCard = () => {
     data: wallets,
     loading: walletLoading,
     error,
-  } = useFetchData<WalletType>("wallets", [
-    orderBy("created", "desc"),
-  ]);
+  } = useDecryptedData<WalletType>(
+    "wallets",
+    WALLET_STRING_FIELDS,
+    WALLET_NUMERIC_FIELDS,
+    [orderBy("created", "desc")]
+  );
 
   const getTotals = () => {
     return wallets.reduce(

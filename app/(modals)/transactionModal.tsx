@@ -25,7 +25,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ImageUpload from "@/components/ImageUpload";
 import { expenseCategories, transactionTypes } from "@/constants/data";
 import { useAuth } from "@/contexts/authContext";
-import useFetchData from "@/hooks/useFetchData";
+import useDecryptedData from "@/hooks/useDecryptedData";
+import { WALLET_STRING_FIELDS, WALLET_NUMERIC_FIELDS } from "@/services/encryptionService";
 import {
   createOrUpdateTransaction,
   deleteTransaction,
@@ -86,7 +87,7 @@ const TransactionModal = () => {
     loading: walletLoading,
     error,
   } = user?.uid
-      ? useFetchData<WalletType>("wallets", [orderBy("created", "desc")])
+      ? useDecryptedData<WalletType>("wallets", WALLET_STRING_FIELDS, WALLET_NUMERIC_FIELDS, [orderBy("created", "desc")])
       : { data: [], loading: false, error: null };
 
   const [loading, setLoading] = useState(false);

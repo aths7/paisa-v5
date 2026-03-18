@@ -23,7 +23,8 @@ import BackButton from "@/components/BackButton";
 
 import TransactionList from "@/components/TransactionList";
 import { orderBy } from "firebase/firestore";
-import useFetchData from "@/hooks/useFetchData";
+import useDecryptedData from "@/hooks/useDecryptedData";
+import { TRANSACTION_STRING_FIELDS, TRANSACTION_NUMERIC_FIELDS } from "@/services/encryptionService";
 
 const SearchModal = () => {
   const [search, setSearch] = useState("");
@@ -35,7 +36,12 @@ const SearchModal = () => {
     data: allTransactions,
     loading: transactionsLoading,
     error,
-  } = useFetchData<TransactionType>("transactions", constraints);
+  } = useDecryptedData<TransactionType>(
+    "transactions",
+    TRANSACTION_STRING_FIELDS,
+    TRANSACTION_NUMERIC_FIELDS,
+    constraints
+  );
 
   //   const hanldeSearch = (search: string) => {};
   //   const handleTextDebounce = useCallback(debounce(hanldeSearch, 400), []);
