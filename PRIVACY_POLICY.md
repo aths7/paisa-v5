@@ -1,6 +1,6 @@
 # Privacy Policy — Paisa
 
-**Last updated: March 6, 2026**
+**Last updated: March 18, 2026**
 **App package:** `com.aths7.paisav5`
 
 ---
@@ -70,14 +70,32 @@ We do not use your data for advertising, profiling, or any purpose beyond operat
 
 ---
 
-## 5. Data Storage & Third-Party Services
+## 5. Data Storage & Security
+
+### 5.1 Client-Side Encryption
+
+Sensitive financial data is encrypted **on your device before it is sent to any server**. We use AES-256 encryption (via CryptoJS) with a key derived from your unique account ID (UID) and a fixed application salt using SHA-256. This means:
+
+- The encryption key is never stored — it is re-derived on every session from your UID.
+- The same key is reproduced on any device you log in to, requiring no key synchronisation.
+- The following fields are encrypted at rest in Firestore:
+
+| Collection | Encrypted fields |
+|---|---|
+| **Transactions** | `amount`, `category`, `description` |
+| **Wallets** | `name`, `amount`, `totalIncome`, `totalExpenses` |
+| **User profile** | `name` |
+
+Fields not listed above (e.g. transaction type, date, wallet ID, image URLs) are stored in plaintext to support app functionality.
+
+### 5.2 Third-Party Services
 
 Your data is stored using **Google Firebase**, which includes:
 
 | Firebase Service | What it stores |
 |---|---|
 | **Firebase Authentication** | Email, password hash, UID, display name |
-| **Firebase Firestore** | User profile, wallets, transactions |
+| **Firebase Firestore** | User profile, wallets, and transactions (sensitive fields AES-256 encrypted — see §5.1) |
 | **Firebase Storage** | Profile photos, wallet icons, receipt images |
 
 Additionally, uploaded images (profile photos, wallet icons, receipt images) are hosted via **Cloudinary**.
@@ -155,5 +173,6 @@ When filling in the **Data Safety** section in Google Play Console, declare the 
 | Photos / receipts | Yes | No | No (optional) | Yes |
 
 - All data is **encrypted in transit** (Firebase/Cloudinary handle this automatically via TLS)
+- Sensitive financial fields (transaction amounts, categories, descriptions; wallet names and balances; display name) are **encrypted at rest** using **AES-256** applied client-side before upload
 - Data is **not used for tracking** or advertising
 - Users can request deletion via the in-app "Delete Account & Data" feature
