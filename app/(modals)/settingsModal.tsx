@@ -18,10 +18,12 @@ import Input from "@/components/Input";
 import Button from "@/components/Button";
 import { auth } from "@/config/firebase";
 import { EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
+import { repairCorruptedEncryptedData } from "@/utils/repairCorruptedEncryption";
 
 const SettingsModal = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [repairLoading, setRepairLoading] = useState(false);
   const [showReauthForm, setShowReauthForm] = useState(false);
   const [password, setPassword] = useState("");
   const [reauthError, setReauthError] = useState("");
@@ -81,6 +83,44 @@ const SettingsModal = () => {
     }
   };
 
+  const showRepairAlert = () => {
+    Alert.alert(
+      "Repair Encrypted Data",
+      "This will scan your user, wallets, and transactions once and repair fields that were accidentally encrypted multiple times. Correctly encrypted fields will be left unchanged.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Run Repair",
+          onPress: handleRepairData,
+        },
+      ]
+    );
+  };
+
+  const handleRepairData = async () => {
+    if (!user?.uid) return;
+
+    setRepairLoading(true);
+    try {
+      const res = await repairCorruptedEncryptedData(user.uid);
+      setRepairLoading(false);
+
+      if (!res.success) {
+        Alert.alert("Repair Failed", res.msg || "Could not repair your encrypted data.");
+        return;
+      }
+
+      const { stats } = res;
+      Alert.alert(
+        "Repair Complete",
+        `Users updated: ${stats.usersUpdated}\nWallets updated: ${stats.walletsUpdated}\nTransactions updated: ${stats.transactionsUpdated}\nFields repaired: ${stats.fieldsReencrypted}\nFields failed: ${stats.fieldsFailed}`
+      );
+    } catch (error: any) {
+      setRepairLoading(false);
+      Alert.alert("Repair Failed", error?.message || "Could not repair your encrypted data.");
+    }
+  };
+
   return (
     <ModalWrapper>
       <View style={styles.container}>
@@ -91,6 +131,52 @@ const SettingsModal = () => {
         />
 
         <View style={styles.content}>
+          <View style={styles.utilitySection}>
+            <Typo
+              size={13}
+              color={colors.neutral400}
+              fontWeight={"600"}
+              style={styles.sectionLabel}
+            >
+              DATA REPAIR
+            </Typo>
+
+            <TouchableOpacity
+              style={styles.repairButton}
+              onPress={showRepairAlert}
+              disabled={loading || repairLoading}
+            >
+              <View style={styles.repairIconWrapper}>
+                <Icons.Wrench
+                  size={verticalScale(22)}
+                  color={colors.primary}
+                  weight="bold"
+                />
+              </View>
+
+              <View style={styles.deleteTextWrapper}>
+                <Typo size={16} fontWeight={"600"} color={colors.text}>
+                  Repair Corrupted Encrypted Data
+                </Typo>
+                <Typo size={13} color={colors.neutral400}>
+                  Repairs user name, wallet names, transaction categories, and descriptions once
+                </Typo>
+              </View>
+
+              {repairLoading ? (
+                <Typo size={13} color={colors.neutral400}>
+                  Running...
+                </Typo>
+              ) : (
+                <Icons.CaretRight
+                  size={verticalScale(18)}
+                  color={colors.neutral500}
+                  weight="bold"
+                />
+              )}
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.dangerSection}>
             <Typo
               size={13}
@@ -205,6 +291,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: spacingY._20,
   },
+  utilitySection: {
+    marginTop: spacingY._10,
+    marginBottom: spacingY._20,
+  },
   sectionLabel: {
     letterSpacing: 1,
     marginBottom: spacingY._10,
@@ -225,11 +315,31 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacingX._15,
     paddingVertical: verticalScale(14),
   },
+  repairButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacingX._12,
+    backgroundColor: colors.neutral800,
+    borderRadius: radius._15,
+    borderCurve: "continuous",
+    borderWidth: 1,
+    borderColor: colors.neutral700,
+    paddingHorizontal: spacingX._15,
+    paddingVertical: verticalScale(14),
+  },
   deleteIconWrapper: {
     width: verticalScale(40),
     height: verticalScale(40),
     borderRadius: radius._10,
     backgroundColor: "#3b0000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  repairIconWrapper: {
+    width: verticalScale(40),
+    height: verticalScale(40),
+    borderRadius: radius._10,
+    backgroundColor: colors.neutral700,
     alignItems: "center",
     justifyContent: "center",
   },

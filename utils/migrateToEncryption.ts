@@ -9,7 +9,7 @@ import {
 import {
   deriveKey,
   encryptField,
-  encryptDocument,
+  isEncrypted,
   TRANSACTION_STRING_FIELDS,
   TRANSACTION_NUMERIC_FIELDS,
   WALLET_STRING_FIELDS,
@@ -18,23 +18,20 @@ import {
 } from "@/services/encryptionService";
 
 /**
- * Returns true if the given value is already encrypted (a CryptoJS Base64 ciphertext).
- * Plaintext numeric amounts are JS numbers; plaintext names/categories are short strings.
- * CryptoJS output is always a long Base64 string (>20 chars starting with "U2Fsd" when using
- * the Salted__ format — or just a long Base64 when using a raw key, which is our case).
+ * Returns true if the given field is still plaintext and needs encryption.
  */
 const needsEncryption = (value: unknown, isNumeric: boolean): boolean => {
   if (isNumeric) return typeof value === "number";
-  return typeof value === "string" && value.length <= 44; // short strings are plaintext
+  return typeof value === "string" && !isEncrypted(value);
 };
 
 /**
  * One-time migration: encrypts all plaintext Firestore documents for a given user.
  *
  * Detection logic:
- *  - Numeric fields (amount, totalIncome, totalExpenses): plaintext if typeof === 'number'
- *  - String fields (name, category, description): plaintext if length <= 44 chars
- *    (CryptoJS AES ciphertext is always much longer than a typical name/category)
+ *  - Numeric fields (amount, totalIncome, totalExpenses): plaintext if typeof === "number"
+ *  - String fields (name, category, description): plaintext if they do not match
+ *    the CryptoJS ciphertext prefix used by this app
  *
  * This function is safe to call multiple times — it only writes documents that
  * still have plaintext fields.

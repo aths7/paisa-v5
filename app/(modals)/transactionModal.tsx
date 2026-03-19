@@ -82,6 +82,11 @@ const TransactionModal = () => {
   const oldTransaction: paramType = useLocalSearchParams();
   // console.log("old transaction: ", oldTransaction);
 
+  const normalizeOptionalParam = (value?: string) => {
+    if (!value || value === "undefined" || value === "null") return "";
+    return value;
+  };
+
   const {
     data: wallets = [],
     loading: walletLoading,
@@ -112,8 +117,8 @@ const TransactionModal = () => {
       setTransaction({
         type: oldTransaction.type,
         amount: amt,
-        description: oldTransaction.description || "",
-        category: oldTransaction.category || "",
+        description: normalizeOptionalParam(oldTransaction.description),
+        category: normalizeOptionalParam(oldTransaction.category),
         date: new Date(oldTransaction.date), // Convert string to Date object
         walletId: oldTransaction.walletId,
         image: oldTransaction?.image || null,
@@ -135,6 +140,9 @@ const TransactionModal = () => {
   const onSubmit = async () => {
     const { type, amount, description, category, date, walletId, image } =
       transaction;
+    const sanitizedDescription = normalizeOptionalParam(description);
+    const sanitizedCategory =
+      type === "expense" ? normalizeOptionalParam(category) : "";
 
     if (!date || !amount) {
       Alert.alert("Transaction", "Please fill all the fields");
@@ -158,8 +166,8 @@ const TransactionModal = () => {
     let transactionData: TransactionType = {
       type,
       amount,
-      description,
-      category,
+      description: sanitizedDescription,
+      category: sanitizedCategory,
       date,
       walletId,
       image,

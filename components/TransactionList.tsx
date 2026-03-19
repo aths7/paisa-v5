@@ -27,19 +27,22 @@ const TransactionList = ({
 
   const handleClick = (item: TransactionType) => {
     console.log("opeingin: ", item.image);
+    const params: Record<string, string> = {
+      id: item.id || "",
+      type: item.type,
+      amount: item.amount.toString(),
+      date: (item.date as Timestamp)?.toDate()?.toISOString(),
+      walletId: item.walletId || "",
+    };
+
+    if (item.category) params.category = item.category;
+    if (item.description) params.description = item.description;
+    if (item.image) params.image = item.image;
+    if (item.uid) params.uid = item.uid;
+
     router.push({
       pathname: "/(modals)/transactionModal",
-      params: {
-        id: item.id,
-        type: item.type,
-        amount: item.amount.toString(), // Convert number to string
-        category: item.category,
-        date: (item.date as Timestamp)?.toDate()?.toISOString(), // Convert Date to string
-        description: item.description,
-        image: item?.image,
-        uid: item.uid,
-        walletId: item.walletId,
-      },
+      params,
     });
   };
   return (

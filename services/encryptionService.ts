@@ -5,6 +5,7 @@ import * as ExpoCrypto from "expo-crypto";
 // per-user AES-256 key. This means the same key is reproduced on any device
 // the user logs into — no key storage required.
 const APP_SALT = "paisa-v5-enc-2024";
+const CIPHERTEXT_PREFIX = "U2FsdGVkX1";
 
 // ---------------------------------------------------------------------------
 // Polyfill: override CryptoJS's random with expo-crypto so AES encryption
@@ -83,10 +84,13 @@ export const decryptDocument = <T extends object>(
   const result = { ...doc } as any;
   for (const f of stringFields) {
     if (result[f] !== undefined && result[f] !== null) {
+      if (!isEncrypted(result[f])) {
+        continue;
+      }
       try {
         result[f] = decryptField(result[f], key);
       } catch {
-        // Field may already be plaintext (pre-migration data) — leave as-is
+        // Leave as-is on failure
       }
     }
   }
@@ -112,4 +116,4 @@ export const decryptDocument = <T extends object>(
  * This is used by the migration utility to detect un-encrypted documents.
  */
 export const isEncrypted = (value: unknown): boolean =>
-  typeof value === "string" && value.length > 20;
+  typeof value === "string" && value.startsWith(CIPHERTEXT_PREFIX);

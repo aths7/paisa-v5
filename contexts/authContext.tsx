@@ -5,8 +5,7 @@ import { router } from "expo-router";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { createContext, useContext, useEffect, useState } from "react";
-import { deriveKey, encryptField, decryptField } from "@/services/encryptionService";
-import { migrateExistingData } from "@/utils/migrateToEncryption";
+import { deriveKey, encryptField, decryptField, isEncrypted } from "@/services/encryptionService";
 
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -25,8 +24,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     name: firebaseUser.displayName,
                 });
                 updateUserData(firebaseUser.uid);
-                // Encrypt any existing plaintext data (no-op if already encrypted)
-                migrateExistingData(firebaseUser.uid);
                 router.replace("/(tabs)");
             } else {
                 setUser(null);
@@ -94,16 +91,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const data = docSnap.data();
                 const key = deriveKey(uid);
                 let displayName = data.name || null;
-                // Decrypt name if it looks like ciphertext (migrated or newly registered users)
-                if (displayName && typeof displayName === "string" && displayName.length > 20) {
+                if (isEncrypted(displayName)) {
                     try {
                         displayName = decryptField(displayName, key);
                     } catch {
-                        // Leave as-is if decryption fails (e.g. plaintext legacy data)
+                        // Leave as-is on failure
                     }
                 }
                 const userData: UserType = {
-                    uid: data?.uid,
+                    uid,
                     name: displayName,
                     email: data.email || null,
                     image: data.image || null,
