@@ -63,6 +63,8 @@ export type BackButtonProps = {
   iconSize?: number;
 };
 
+export type WalletKind = "credit_card" | "bank_account" | "upi_lite" | "cash";
+
 export type TransactionType = {
   id?: string;
   type: string;
@@ -73,6 +75,9 @@ export type TransactionType = {
   image?: any;
   uid?: string;
   walletId: string;
+  walletType?: WalletKind;
+  transactionSource?: "manual" | "credit_card_bill_payment";
+  linkedWalletId?: string;
 };
 
 export type CategoryType = {
@@ -159,10 +164,23 @@ export type ResponseType = {
 export type WalletType = {
   id?: string;
   name: string;
-  amount?: number;
-  totalIncome?: number;
-  totalExpenses?: number;
+  walletType?: WalletKind;
   image: any;
   uid?: string;
-  created?: Date;
+  created?: Date | Timestamp | string;
+
+  totalIncome?: number;
+  totalExpenses?: number;
+
+  // For bank_account, upi_lite, cash
+  currentBalance?: number;
+
+  // Credit-card only
+  creditLimit?: number;
+  billingDay?: number;
+  pendingAmount?: number;
+  lastBillPaidAt?: Date | Timestamp | string;
+
+  // Legacy field — old wallets stored balance here; kept for migration compat
+  amount?: number;
 };

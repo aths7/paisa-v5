@@ -52,7 +52,16 @@ export const decryptNumber = (ciphertext: string, key: string): number =>
 export const TRANSACTION_STRING_FIELDS = ["category", "description"] as const;
 export const TRANSACTION_NUMERIC_FIELDS = ["amount"] as const;
 export const WALLET_STRING_FIELDS = ["name"] as const;
-export const WALLET_NUMERIC_FIELDS = ["amount", "totalIncome", "totalExpenses"] as const;
+// "amount" is kept for backward-compat decryption of old wallet docs (pre-v3 schema).
+// New wallets use "currentBalance", "creditLimit", "pendingAmount" instead.
+export const WALLET_NUMERIC_FIELDS = [
+  "amount",
+  "currentBalance",
+  "creditLimit",
+  "pendingAmount",
+  "totalIncome",
+  "totalExpenses",
+] as const;
 export const USER_STRING_FIELDS = ["name"] as const;
 
 // ---------------------------------------------------------------------------

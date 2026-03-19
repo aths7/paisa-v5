@@ -76,6 +76,12 @@ export const expenseCategories: ExpenseCategoriesType = {
     icon: Icons.DotsThreeOutline,
     bgColor: "#525252", // Neutral Dark Gray
   },
+  credit_card_payment: {
+    label: "Credit Card Payment",
+    value: "credit_card_payment",
+    icon: Icons.CreditCard,
+    bgColor: "#1d4ed8", // Blue
+  },
 };
 
 export const incomeCategory: CategoryType = {

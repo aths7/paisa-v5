@@ -1,4 +1,4 @@
-import { ImageBackground, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ImageBackground, StyleSheet, TouchableOpacity, View } from "react-native";
 import React from "react";
 import { scale, verticalScale } from "@/utils/styling";
 import Typo from "./Typo";
@@ -9,12 +9,17 @@ import { WALLET_STRING_FIELDS, WALLET_NUMERIC_FIELDS } from "@/services/encrypti
 import { WalletType } from "@/types";
 import { orderBy } from "firebase/firestore";
 import { useRouter } from "expo-router";
-const HomeCard = () => {
+
+type HomeCardProps = {
+  monthlySpend?: number;
+  monthLabel?: string;
+};
+
+const HomeCard = ({ monthlySpend = 0, monthLabel }: HomeCardProps) => {
   const router = useRouter();
   const {
     data: wallets,
     loading: walletLoading,
-    error,
   } = useDecryptedData<WalletType>(
     "wallets",
     WALLET_STRING_FIELDS,
@@ -22,17 +27,24 @@ const HomeCard = () => {
     [orderBy("created", "desc")]
   );
 
-  const getTotals = () => {
-    return wallets.reduce(
-      (totals: any, item: WalletType) => {
-        totals.balance = totals.balance + Number(item.amount);
-        totals.income = totals.income + Number(item.totalIncome);
-        totals.expenses = totals.expenses + Number(item.totalExpenses);
-        return totals;
-      },
-      { balance: 0, income: 0, expenses: 0 }
-    );
-  };
+  /** Sum of currentBalance (or legacy `amount`) for non-credit-card wallets */
+  const inHand = wallets
+    .filter((w) => w.walletType !== "credit_card")
+    .reduce((sum, w) => sum + (w.currentBalance ?? w.amount ?? 0), 0);
+
+  /** Sum of available credit across all credit cards */
+  const borrowedPower = wallets
+    .filter((w) => w.walletType === "credit_card")
+    .reduce((sum, w) => {
+      const limit = w.creditLimit ?? 0;
+      const pending = w.pendingAmount ?? 0;
+      return sum + Math.max(limit - pending, 0);
+    }, 0);
+
+  const overallSpendCapacity = inHand + borrowedPower;
+
+  const fmt = (n: number) => `₹${n.toFixed(2)}`;
+
   return (
     <ImageBackground
       source={require("../assets/images/card.png")}
@@ -40,70 +52,87 @@ const HomeCard = () => {
       style={styles.bgImage}
     >
       <View style={styles.container}>
-        <View>
-          {/* total balance */}
-          <View style={styles.totalBalanceRow}>
-            <Typo color={colors.neutral800} size={17} fontWeight={"500"}>
-              Total Balance
-            </Typo>
-            <TouchableOpacity onPress={() => router.push("/(tabs)/wallet")}>
-              <Icons.DotsThreeOutline
-                size={verticalScale(23)}
-                color={colors.black}
-                weight="fill"
-              />
-            </TouchableOpacity>
-          </View>
-          <Typo color={colors.black} size={30} fontWeight={"bold"}>
-            {/* $ 234.23 */}₹{" "}
-            {walletLoading ? "----" : getTotals()?.balance?.toFixed(2)}
+        {/* Header row */}
+        <View style={styles.headerRow}>
+          <Typo color={colors.neutral800} size={17} fontWeight="500">
+            Spend Capacity
           </Typo>
+          <TouchableOpacity onPress={() => router.push("/(tabs)/wallet")}>
+            <Icons.DotsThreeOutline
+              size={verticalScale(23)}
+              color={colors.black}
+              weight="fill"
+            />
+          </TouchableOpacity>
         </View>
 
-        {/* expense & income */}
+        {/* Big number — overall spend capacity */}
+        <Typo color={colors.black} size={30} fontWeight="bold">
+          {walletLoading ? "----" : fmt(overallSpendCapacity)}
+        </Typo>
+
+        {/* Three metric columns */}
         <View style={styles.stats}>
-          {/* income */}
-          <View style={{ gap: verticalScale(5) }}>
-            <View style={styles.incomeExpense}>
-              <View style={styles.statsIcon}>
-                <Icons.ArrowDown
-                  size={verticalScale(15)}
+          {/* Monthly Spend */}
+          <View style={styles.statCol}>
+            <View style={styles.statLabel}>
+              <View style={[styles.statsIcon, { backgroundColor: "#fde68a" }]}>
+                <Icons.ChartBar
+                  size={verticalScale(14)}
                   color={colors.black}
                   weight="bold"
                 />
               </View>
-              <Typo size={16} color={colors.neutral700} fontWeight={"500"}>
-                Income
+              <Typo size={13} color={colors.neutral700} fontWeight="500">
+                Spend
               </Typo>
             </View>
-            <View style={{ alignSelf: "center" }}>
-              <Typo size={17} color={colors.green} fontWeight={"600"}>
-                {/* $ 233.42 */}₹{" "}
-                {walletLoading ? "----" : getTotals()?.income.toFixed(2)}
+            <Typo size={14} color={colors.rose} fontWeight="600">
+              {walletLoading ? "----" : fmt(monthlySpend)}
+            </Typo>
+            {monthLabel && (
+              <Typo size={11} color={colors.neutral600}>
+                {monthLabel}
               </Typo>
-            </View>
+            )}
           </View>
 
-          {/* expense */}
-          <View style={{ gap: verticalScale(5) }}>
-            <View style={styles.incomeExpense}>
-              <View style={styles.statsIcon}>
-                <Icons.ArrowUp
-                  size={verticalScale(15)}
+          {/* In Hand */}
+          <View style={styles.statCol}>
+            <View style={styles.statLabel}>
+              <View style={[styles.statsIcon, { backgroundColor: "#bbf7d0" }]}>
+                <Icons.Wallet
+                  size={verticalScale(14)}
                   color={colors.black}
                   weight="bold"
                 />
               </View>
-              <Typo size={16} color={colors.neutral700} fontWeight={"500"}>
-                Expense
+              <Typo size={13} color={colors.neutral700} fontWeight="500">
+                In Hand
               </Typo>
             </View>
-            <View style={{ alignSelf: "center" }}>
-              <Typo size={17} color={colors.rose} fontWeight={"600"}>
-                {/* $ 534.23 */}₹{" "}
-                {walletLoading ? "----" : getTotals()?.expenses.toFixed(2)}
+            <Typo size={14} color={colors.green} fontWeight="600">
+              {walletLoading ? "----" : fmt(inHand)}
+            </Typo>
+          </View>
+
+          {/* Borrowed Power */}
+          <View style={styles.statCol}>
+            <View style={styles.statLabel}>
+              <View style={[styles.statsIcon, { backgroundColor: "#bfdbfe" }]}>
+                <Icons.CreditCard
+                  size={verticalScale(14)}
+                  color={colors.black}
+                  weight="bold"
+                />
+              </View>
+              <Typo size={13} color={colors.neutral700} fontWeight="500">
+                Credit
               </Typo>
             </View>
+            <Typo size={14} color={colors.neutral800} fontWeight="600">
+              {walletLoading ? "----" : fmt(borrowedPower)}
+            </Typo>
           </View>
         </View>
       </View>
@@ -121,29 +150,31 @@ const styles = StyleSheet.create({
   container: {
     padding: spacingX._20,
     paddingHorizontal: scale(23),
-    height: "87%",
+    height: "90%",
     width: "100%",
     justifyContent: "space-between",
   },
-  totalBalanceRow: {
+  headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: spacingY._5,
   },
   stats: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
   },
-  statsIcon: {
-    backgroundColor: colors.neutral350,
-    padding: spacingY._5,
-    borderRadius: 50,
+  statCol: {
+    gap: verticalScale(3),
+    flex: 1,
   },
-  incomeExpense: {
+  statLabel: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacingY._7,
+    gap: scale(4),
+  },
+  statsIcon: {
+    padding: spacingY._5,
+    borderRadius: 50,
   },
 });

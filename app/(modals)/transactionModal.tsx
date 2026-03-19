@@ -388,10 +388,20 @@ const TransactionModal = () => {
               selectedTextStyle={styles.dropdownSelectedText}
               itemContainerStyle={styles.dropdownItemContainer}
               iconStyle={styles.dropdownIcon}
-              data={wallets.map((wallet) => ({
-                label: `${wallet?.name} (₹${wallet.amount})`,
-                value: wallet?.id,
-              }))}
+              data={wallets.map((wallet) => {
+                const balance =
+                  wallet.walletType === "credit_card"
+                    ? wallet.pendingAmount ?? 0
+                    : wallet.currentBalance ?? wallet.amount ?? 0;
+                const suffix =
+                  wallet.walletType === "credit_card"
+                    ? `₹${balance.toFixed(2)} due`
+                    : `₹${balance.toFixed(2)}`;
+                return {
+                  label: `${wallet?.name} (${suffix})`,
+                  value: wallet?.id,
+                };
+              })}
               maxHeight={300}
               labelField="label"
               valueField="value"

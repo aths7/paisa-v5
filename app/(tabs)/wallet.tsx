@@ -33,11 +33,13 @@ const Wallet = () => {
     [orderBy("created", "desc")]
   );
 
+  // In Hand = sum of currentBalance for non-CC wallets (legacy `amount` as fallback)
   const getTotalBalance = () =>
-    wallets.reduce((total, item) => {
-      total = total + (item?.amount || 0);
-      return total;
-    }, 0);
+    wallets
+      .filter((item) => item.walletType !== "credit_card")
+      .reduce((total, item) => {
+        return total + (item.currentBalance ?? item.amount ?? 0);
+      }, 0);
 
   return (
     <ScreenWrapper style={{ backgroundColor: colors.black }}>
@@ -49,7 +51,7 @@ const Wallet = () => {
               ₹{getTotalBalance()?.toFixed(2)}
             </Typo>
             <Typo size={16} color={colors.neutral300}>
-              Total balance
+              In Hand
             </Typo>
           </View>
         </View>

@@ -1,11 +1,10 @@
 import {
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import React, { useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import ScreenWrapper from "@/components/ScreenWrapper";
 import Typo from "@/components/Typo";
 import { StatusBar } from "expo-status-bar";
@@ -14,45 +13,68 @@ import * as Icons from "phosphor-react-native";
 import { scale, verticalScale } from "@/utils/styling";
 import HomeCard from "@/components/HomeCard";
 import Button from "@/components/Button";
-import { signOut } from "firebase/auth";
-import { auth } from "@/config/firebase";
 import { useAuth } from "@/contexts/authContext";
-import { Router, useRouter } from "expo-router";
+import { useRouter } from "expo-router";
 import TransactionList from "@/components/TransactionList";
-import { limit, orderBy } from "firebase/firestore";
+import { limit, orderBy, Timestamp } from "firebase/firestore";
 import useDecryptedData from "@/hooks/useDecryptedData";
-import { TRANSACTION_STRING_FIELDS, TRANSACTION_NUMERIC_FIELDS, WALLET_STRING_FIELDS, WALLET_NUMERIC_FIELDS } from "@/services/encryptionService";
+import {
+  TRANSACTION_STRING_FIELDS,
+  TRANSACTION_NUMERIC_FIELDS,
+  WALLET_STRING_FIELDS,
+  WALLET_NUMERIC_FIELDS,
+} from "@/services/encryptionService";
 import { TransactionType, WalletType } from "@/types";
-import { fetchWeeklyStats } from "@/services/transactionService";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
-type SetupStep = {
-  number: number;
+type MonthPill = {
   label: string;
-  subLabel: string;
-  done: boolean;
-  active: boolean;
-  onPress: () => void;
+  year: number;
+  month: number; // 0–11
+};
+
+const getLast12MonthPills = (): MonthPill[] => {
+  const pills: MonthPill[] = [];
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    pills.push({
+      label:
+        d.toLocaleString("default", { month: "short" }) +
+        " " +
+        d.getFullYear().toString().slice(-2),
+      year: d.getFullYear(),
+      month: d.getMonth(),
+    });
+  }
+  return pills;
 };
 
 const Home = () => {
   const { user } = useAuth();
   const router = useRouter();
 
-  const constraints = [
-    orderBy("date", "desc"),
-    limit(30),
-  ];
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<MonthPill>({
+    label:
+      now.toLocaleString("default", { month: "short" }) +
+      " " +
+      now.getFullYear().toString().slice(-2),
+    year: now.getFullYear(),
+    month: now.getMonth(),
+  });
 
+  const monthPills = useMemo(() => getLast12MonthPills(), []);
+
+  // Fetch last 100 transactions (client-side filtering by month)
   const {
-    data: recentTransactions,
+    data: allTransactions,
     loading: transactionsLoading,
-    error,
   } = useDecryptedData<TransactionType>(
     "transactions",
     TRANSACTION_STRING_FIELDS,
     TRANSACTION_NUMERIC_FIELDS,
-    constraints
+    [orderBy("date", "desc"), limit(100)]
   );
 
   const { data: wallets, loading: walletsLoading } = useDecryptedData<WalletType>(
@@ -62,9 +84,50 @@ const Home = () => {
     [orderBy("created", "desc")]
   );
 
+  // Filter transactions by selected month (client-side, V1)
+  const monthlyTransactions = useMemo(() => {
+    return allTransactions.filter((txn) => {
+      let date: Date;
+      if (txn.date instanceof Timestamp) {
+        date = txn.date.toDate();
+      } else if (txn.date instanceof Date) {
+        date = txn.date;
+      } else {
+        date = new Date(txn.date as string);
+      }
+      return (
+        date.getFullYear() === selectedMonth.year &&
+        date.getMonth() === selectedMonth.month
+      );
+    });
+  }, [allTransactions, selectedMonth]);
+
+  // Monthly spend: expenses excluding bill-payment records
+  const monthlySpend = useMemo(() => {
+    return monthlyTransactions
+      .filter(
+        (t) =>
+          t.type === "expense" &&
+          t.transactionSource !== "credit_card_bill_payment"
+      )
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+  }, [monthlyTransactions]);
+
   const hasWallets = !walletsLoading && wallets.length > 0;
-  const hasTransactions = !transactionsLoading && recentTransactions.length > 0;
-  const showSetupCard = !walletsLoading && !transactionsLoading && (!hasWallets || !hasTransactions);
+  const hasTransactions = !transactionsLoading && allTransactions.length > 0;
+  const showSetupCard =
+    !walletsLoading &&
+    !transactionsLoading &&
+    (!hasWallets || !hasTransactions);
+
+  type SetupStep = {
+    number: number;
+    label: string;
+    subLabel: string;
+    done: boolean;
+    active: boolean;
+    onPress: () => void;
+  };
 
   const setupSteps: SetupStep[] = [
     {
@@ -85,22 +148,14 @@ const Home = () => {
     },
   ];
 
-  const logout = async () => {
-    await signOut(auth);
-  };
-
   return (
     <ScreenWrapper>
       <View style={styles.container}>
-        {/* header */}
+        {/* Header */}
         <View style={styles.header}>
           <View style={{ gap: 4 }}>
-            <Typo size={16} color={colors.neutral400}>
-              Hello,
-            </Typo>
-            <Typo fontWeight={"500"} size={20}>
-              {user?.name || " "}
-            </Typo>
+            <Typo size={16} color={colors.neutral400}>Hello,</Typo>
+            <Typo fontWeight="500" size={20}>{user?.name || " "}</Typo>
           </View>
           <TouchableOpacity
             onPress={() => router.push("/(modals)/searchModal")}
@@ -118,15 +173,50 @@ const Home = () => {
           contentContainerStyle={styles.scrollViewStyle}
           showsVerticalScrollIndicator={false}
         >
-          {/* card */}
+          {/* Month pill selector */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.pillsContainer}
+          >
+            {monthPills.map((pill) => {
+              const isSelected =
+                pill.year === selectedMonth.year &&
+                pill.month === selectedMonth.month;
+              return (
+                <TouchableOpacity
+                  key={`${pill.year}-${pill.month}`}
+                  style={[styles.pill, isSelected && styles.pillSelected]}
+                  onPress={() => setSelectedMonth(pill)}
+                >
+                  <Typo
+                    size={13}
+                    fontWeight={isSelected ? "700" : "400"}
+                    color={isSelected ? colors.black : colors.neutral300}
+                  >
+                    {pill.label}
+                  </Typo>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* HomeCard */}
           <View>
-            <HomeCard />
+            <HomeCard
+              monthlySpend={monthlySpend}
+              monthLabel={selectedMonth.label}
+            />
           </View>
 
-          {/* getting started card */}
+          {/* Getting started card */}
           {showSetupCard && (
             <Animated.View
-              entering={FadeInDown.duration(600).springify().damping(30).mass(3).stiffness(250)}
+              entering={FadeInDown.duration(600)
+                .springify()
+                .damping(30)
+                .mass(3)
+                .stiffness(250)}
               style={styles.setupCard}
             >
               <View style={styles.setupHeader}>
@@ -135,15 +225,12 @@ const Home = () => {
                   color={colors.primary}
                   weight="fill"
                 />
-                <Typo size={16} fontWeight={"700"}>
-                  Getting Started
-                </Typo>
+                <Typo size={16} fontWeight="700">Getting Started</Typo>
               </View>
 
               <View style={styles.setupSteps}>
                 {setupSteps.map((step) => (
                   <View key={step.number} style={styles.stepRow}>
-                    {/* step indicator */}
                     <View
                       style={[
                         styles.stepCircle,
@@ -161,7 +248,7 @@ const Home = () => {
                       ) : (
                         <Typo
                           size={12}
-                          fontWeight={"700"}
+                          fontWeight="700"
                           color={step.active ? colors.neutral900 : colors.neutral500}
                         >
                           {step.number}
@@ -169,22 +256,23 @@ const Home = () => {
                       )}
                     </View>
 
-                    {/* step connector line */}
                     {step.number < setupSteps.length && (
                       <View
-                        style={[
-                          styles.stepLine,
-                          step.done && styles.stepLineDone,
-                        ]}
+                        style={[styles.stepLine, step.done && styles.stepLineDone]}
                       />
                     )}
 
-                    {/* step text + button */}
                     <View style={styles.stepContent}>
                       <Typo
                         size={14}
-                        fontWeight={"600"}
-                        color={step.done ? colors.neutral500 : step.active ? colors.text : colors.neutral600}
+                        fontWeight="600"
+                        color={
+                          step.done
+                            ? colors.neutral500
+                            : step.active
+                            ? colors.text
+                            : colors.neutral600
+                        }
                         style={step.done ? styles.strikethrough : undefined}
                       >
                         {step.label}
@@ -196,7 +284,6 @@ const Home = () => {
                       )}
                     </View>
 
-                    {/* CTA arrow */}
                     {step.active && (
                       <TouchableOpacity
                         onPress={step.onPress}
@@ -216,25 +303,18 @@ const Home = () => {
           )}
 
           <TransactionList
-            title={"Recent Transactions"}
+            title={`Transactions — ${selectedMonth.label}`}
             loading={transactionsLoading}
-            data={recentTransactions}
-            emptyListMessage="No Transactions added yet!"
+            data={monthlyTransactions}
+            emptyListMessage={`No transactions in ${selectedMonth.label}`}
           />
-
-          {/* <Button onPress={logout}>
-            <Typo color={colors.black}>Logout</Typo>
-          </Button> */}
         </ScrollView>
+
         <Button
           onPress={() => router.push("/(modals)/transactionModal")}
           style={styles.floatingButton}
         >
-          <Icons.Plus
-            color={colors.black}
-            weight="bold"
-            size={verticalScale(24)}
-          />
+          <Icons.Plus color={colors.black} weight="bold" size={verticalScale(24)} />
         </Button>
       </View>
     </ScreenWrapper>
@@ -260,6 +340,22 @@ const styles = StyleSheet.create({
     padding: spacingX._10,
     borderRadius: 50,
   },
+  pillsContainer: {
+    gap: scale(8),
+    paddingVertical: spacingY._5,
+  },
+  pill: {
+    paddingHorizontal: spacingX._12,
+    paddingVertical: spacingY._7,
+    borderRadius: radius._20,
+    borderWidth: 1,
+    borderColor: colors.neutral700,
+    backgroundColor: colors.neutral800,
+  },
+  pillSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
   floatingButton: {
     height: verticalScale(50),
     width: verticalScale(50),
@@ -268,7 +364,6 @@ const styles = StyleSheet.create({
     bottom: verticalScale(30),
     right: verticalScale(30),
   },
-
   scrollViewStyle: {
     marginTop: spacingY._10,
     paddingBottom: verticalScale(100),
@@ -305,12 +400,8 @@ const styles = StyleSheet.create({
     marginTop: verticalScale(1),
     flexShrink: 0,
   },
-  stepCircleDone: {
-    backgroundColor: colors.primary,
-  },
-  stepCircleActive: {
-    backgroundColor: colors.primary,
-  },
+  stepCircleDone: { backgroundColor: colors.primary },
+  stepCircleActive: { backgroundColor: colors.primary },
   stepCircleInactive: {
     backgroundColor: colors.neutral700,
     borderWidth: 1,
@@ -324,16 +415,12 @@ const styles = StyleSheet.create({
     height: spacingY._15,
     backgroundColor: colors.neutral600,
   },
-  stepLineDone: {
-    backgroundColor: colors.primary,
-  },
+  stepLineDone: { backgroundColor: colors.primary },
   stepContent: {
     flex: 1,
     gap: verticalScale(3),
   },
-  strikethrough: {
-    textDecorationLine: "line-through",
-  },
+  strikethrough: { textDecorationLine: "line-through" },
   stepButton: {
     backgroundColor: colors.primary,
     borderRadius: radius._10,
