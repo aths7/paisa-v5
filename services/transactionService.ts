@@ -195,7 +195,7 @@ export const createOrUpdateTransaction = async (
       const walletSnap = await getDoc(
         doc(firestore, "users", uid, "wallets", newWalletId)
       );
-      if (walletSnap.exists()) {
+      if (walletSnap.exists() && walletSnap.data().walletType) {
         transactionData.walletType = walletSnap.data().walletType;
       }
     }

@@ -52,6 +52,18 @@ const Profile = () => {
     //   bgColor: "#10b981",
     // },
     {
+      title: "Emotion Tags",
+      icon: (
+        <Icons.Smiley
+          size={verticalScale(26)}
+          color={colors.white}
+          weight="fill"
+        />
+      ),
+      routeName: "/(modals)/emotionsModal",
+      bgColor: "#7c3aed",
+    },
+    {
       title: "Settings",
       icon: (
         <Icons.GearSix

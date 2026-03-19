@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, TouchableOpacity, View } from "react-native";
 import React from "react";
 import Typo from "./Typo";
 import { colors, radius, spacingX, spacingY } from "@/constants/theme";
@@ -9,7 +9,7 @@ import {
 } from "@/types";
 import * as Icons from "phosphor-react-native";
 import { expenseCategories, incomeCategory } from "@/constants/data";
-import { verticalScale } from "@/utils/styling";
+import { scale, verticalScale } from "@/utils/styling";
 import { formatIndianNumber } from "@/utils/common";
 import Loading from "./Loading";
 import { Timestamp } from "firebase/firestore";
@@ -40,6 +40,8 @@ const TransactionList = ({
     if (item.description) params.description = item.description;
     if (item.image) params.image = item.image;
     if (item.uid) params.uid = item.uid;
+    if (item.purchaseStyle) params.purchaseStyle = item.purchaseStyle;
+    if (item.emotion) params.emotion = item.emotion;
 
     router.push({
       pathname: "/(modals)/transactionModal",
@@ -127,7 +129,16 @@ const TransactionItem = ({
         .mass(3)
         .stiffness(250)}
     >
-      <TouchableOpacity style={styles.row} onPress={() => handleClick(item)}>
+      <TouchableOpacity
+        style={[
+          styles.row,
+          {
+            borderLeftWidth: 3,
+            borderLeftColor: item?.type === "income" ? colors.primary : colors.rose,
+          },
+        ]}
+        onPress={() => handleClick(item)}
+      >
         <View style={[styles.icon, { backgroundColor: category.bgColor }]}>
           {IconComponent && (
             <IconComponent
@@ -147,6 +158,13 @@ const TransactionItem = ({
           >
             {item?.description}
           </Typo>
+          {item?.emotion && (
+            <View style={styles.emotionBadge}>
+              <Typo size={11} fontWeight="600" color="#a78bfa">
+                {item.emotion.charAt(0).toUpperCase() + item.emotion.slice(1)}
+              </Typo>
+            </View>
+          )}
         </View>
         <View style={styles.amountDate}>
           <Typo
@@ -201,5 +219,13 @@ const styles = StyleSheet.create({
   amountDate: {
     alignItems: "flex-end",
     gap: 3,
+  },
+  emotionBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: "#a78bfa22",
+    borderRadius: 99,
+    paddingHorizontal: scale(7),
+    paddingVertical: 2,
+    marginTop: 2,
   },
 });

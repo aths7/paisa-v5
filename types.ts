@@ -64,6 +64,7 @@ export type BackButtonProps = {
 };
 
 export type WalletKind = "credit_card" | "bank_account" | "upi_lite" | "cash";
+export type PurchaseStyle = "impulsive" | "non_impulsive";
 
 export type TransactionType = {
   id?: string;
@@ -78,6 +79,8 @@ export type TransactionType = {
   walletType?: WalletKind;
   transactionSource?: "manual" | "credit_card_bill_payment";
   linkedWalletId?: string;
+  purchaseStyle?: PurchaseStyle;
+  emotion?: string;
 };
 
 export type CategoryType = {
@@ -133,6 +136,7 @@ export type UserType = {
   email?: string | null;
   name: string | null;
   image?: any;
+  emotionTags?: string[];
 } | null;
 
 export type UserDataType = {

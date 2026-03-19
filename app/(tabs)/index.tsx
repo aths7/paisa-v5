@@ -4,7 +4,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ScreenWrapper from "@/components/ScreenWrapper";
 import Typo from "@/components/Typo";
 import { StatusBar } from "expo-status-bar";
@@ -33,23 +33,6 @@ type MonthPill = {
   month: number; // 0–11
 };
 
-const getLast12MonthPills = (): MonthPill[] => {
-  const pills: MonthPill[] = [];
-  const now = new Date();
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    pills.push({
-      label:
-        d.toLocaleString("default", { month: "short" }) +
-        " " +
-        d.getFullYear().toString().slice(-2),
-      year: d.getFullYear(),
-      month: d.getMonth(),
-    });
-  }
-  return pills;
-};
-
 const Home = () => {
   const { user } = useAuth();
   const router = useRouter();
@@ -63,8 +46,6 @@ const Home = () => {
     year: now.getFullYear(),
     month: now.getMonth(),
   });
-
-  const monthPills = useMemo(() => getLast12MonthPills(), []);
 
   // Fetch last 100 transactions (client-side filtering by month)
   const {
@@ -83,6 +64,59 @@ const Home = () => {
     WALLET_NUMERIC_FIELDS,
     [orderBy("created", "desc")]
   );
+
+  // Build pills only from months that have at least one transaction.
+  // While loading (allTransactions still empty), fall back to current month so pills never disappear.
+  const monthPills = useMemo((): MonthPill[] => {
+    if (transactionsLoading && allTransactions.length === 0) {
+      return [
+        {
+          label:
+            now.toLocaleString("default", { month: "short" }) +
+            " " +
+            now.getFullYear().toString().slice(-2),
+          year: now.getFullYear(),
+          month: now.getMonth(),
+        },
+      ];
+    }
+    const seen = new Set<string>();
+    const pills: MonthPill[] = [];
+    for (const txn of allTransactions) {
+      let date: Date;
+      if (txn.date instanceof Timestamp) {
+        date = txn.date.toDate();
+      } else if (txn.date instanceof Date) {
+        date = txn.date;
+      } else {
+        date = new Date(txn.date as string);
+      }
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const key = `${year}-${month}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        pills.push({
+          label:
+            date.toLocaleString("default", { month: "short" }) +
+            " " +
+            year.toString().slice(-2),
+          year,
+          month,
+        });
+      }
+    }
+    return pills; // already newest-first (transactions ordered by date desc)
+  }, [allTransactions, transactionsLoading]);
+
+  // If the selected month has no transactions (e.g. on first load), switch to latest available
+  useEffect(() => {
+    if (monthPills.length === 0) return;
+    const stillValid = monthPills.some(
+      (p) => p.year === selectedMonth.year && p.month === selectedMonth.month
+    );
+    if (!stillValid) setSelectedMonth(monthPills[0]);
+  }, [monthPills]);
 
   // Filter transactions by selected month (client-side, V1)
   const monthlyTransactions = useMemo(() => {

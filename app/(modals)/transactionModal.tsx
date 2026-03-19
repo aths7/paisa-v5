@@ -26,6 +26,7 @@ import ImageUpload from "@/components/ImageUpload";
 import { expenseCategories, transactionTypes } from "@/constants/data";
 import { formatIndianNumber } from "@/utils/common";
 import { useAuth } from "@/contexts/authContext";
+import { PurchaseStyle } from "@/types";
 import useDecryptedData from "@/hooks/useDecryptedData";
 import { WALLET_STRING_FIELDS, WALLET_NUMERIC_FIELDS } from "@/services/encryptionService";
 import {
@@ -72,13 +73,15 @@ const TransactionModal = () => {
   type paramType = {
     id: string;
     type: string;
-    amount: string; // Note: Keeping it as string since query parameters are strings
+    amount: string;
     category?: string;
-    date: string; // Store as string for parsing later
+    date: string;
     description?: string;
     image?: any;
     uid?: string;
     walletId: string;
+    purchaseStyle?: string;
+    emotion?: string;
   };
   const oldTransaction: paramType = useLocalSearchParams();
   // console.log("old transaction: ", oldTransaction);
@@ -101,6 +104,10 @@ const TransactionModal = () => {
 
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  const DEFAULT_EMOTION_TAGS = ["happy", "sad", "stressed", "neutral", "excited", "anxious", "content", "bored"];
+  const emotionOptions = (user?.emotionTags?.length ? user.emotionTags : DEFAULT_EMOTION_TAGS)
+    .map((e) => ({ label: e.charAt(0).toUpperCase() + e.slice(1), value: e }));
+
   const [transaction, setTransaction] = useState<TransactionType>({
     type: "expense",
     amount: 0,
@@ -109,6 +116,8 @@ const TransactionModal = () => {
     date: new Date(),
     walletId: "",
     image: null,
+    purchaseStyle: "non_impulsive",
+    emotion: "",
   });
 
   useEffect(() => {
@@ -120,9 +129,11 @@ const TransactionModal = () => {
         amount: amt,
         description: normalizeOptionalParam(oldTransaction.description),
         category: normalizeOptionalParam(oldTransaction.category),
-        date: new Date(oldTransaction.date), // Convert string to Date object
+        date: new Date(oldTransaction.date),
         walletId: oldTransaction.walletId,
         image: oldTransaction?.image || null,
+        purchaseStyle: (oldTransaction.purchaseStyle as PurchaseStyle) || "non_impulsive",
+        emotion: normalizeOptionalParam(oldTransaction.emotion),
       });
     }
   }, []);
@@ -173,6 +184,8 @@ const TransactionModal = () => {
       walletId,
       image,
       uid: user?.uid,
+      purchaseStyle: transaction.purchaseStyle || "non_impulsive",
+      ...(transaction.emotion ? { emotion: transaction.emotion } : {}),
     };
 
     if (oldTransaction?.id) transactionData.id = oldTransaction.id;
@@ -417,6 +430,73 @@ const TransactionModal = () => {
           </View>
 
 
+          {/* purchase style — expense only */}
+          {transaction.type === "expense" && (
+            <View style={styles.inputContainer}>
+              <Typo color={colors.neutral200} size={16} fontWeight="500">
+                Purchase Style
+              </Typo>
+              <View style={styles.styleRow}>
+                {(["non_impulsive", "impulsive"] as PurchaseStyle[]).map((style) => {
+                  const active = transaction.purchaseStyle === style;
+                  const label = style === "impulsive" ? "Impulsive" : "Non-Impulsive";
+                  return (
+                    <TouchableOpacity
+                      key={style}
+                      style={[
+                        styles.stylePill,
+                        active && {
+                          backgroundColor: style === "impulsive" ? colors.rose : colors.primary,
+                          borderColor: style === "impulsive" ? colors.rose : colors.primary,
+                        },
+                      ]}
+                      onPress={() => setTransaction({ ...transaction, purchaseStyle: style })}
+                    >
+                      <Typo
+                        size={14}
+                        fontWeight="600"
+                        color={active ? colors.black : colors.neutral400}
+                      >
+                        {label}
+                      </Typo>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* emotion */}
+          <View style={styles.inputContainer}>
+            <View style={styles.flexRow}>
+              <Typo color={colors.neutral200} size={16} fontWeight="500">
+                Emotion
+              </Typo>
+              <Typo color={colors.neutral500} size={14}>
+                (optional)
+              </Typo>
+            </View>
+            <Dropdown
+              style={styles.dropdownContainer}
+              activeColor={colors.neutral700}
+              itemTextStyle={styles.dropdownItemText}
+              selectedTextStyle={styles.dropdownSelectedText}
+              itemContainerStyle={styles.dropdownItemContainer}
+              iconStyle={styles.dropdownIcon}
+              data={emotionOptions}
+              maxHeight={250}
+              labelField="label"
+              valueField="value"
+              placeholder="How are you feeling?"
+              placeholderStyle={styles.dropdownPlaceholder}
+              value={transaction.emotion || null}
+              containerStyle={styles.dropdownListContainer}
+              onChange={(item) =>
+                setTransaction({ ...transaction, emotion: item.value || "" })
+              }
+            />
+          </View>
+
           {/* description */}
           <View style={styles.inputContainer}>
             <View style={styles.flexRow}>
@@ -608,5 +688,20 @@ const styles = StyleSheet.create({
   dropdownIcon: {
     height: verticalScale(30),
     tintColor: colors.neutral300,
+  },
+  styleRow: {
+    flexDirection: "row",
+    gap: scale(10),
+  },
+  stylePill: {
+    flex: 1,
+    height: verticalScale(48),
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.neutral600,
+    borderRadius: radius._15,
+    borderCurve: "continuous",
+    backgroundColor: colors.neutral800,
   },
 });

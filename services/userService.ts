@@ -6,6 +6,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  setDoc,
   updateDoc,
   writeBatch,
 } from "firebase/firestore";
@@ -113,6 +114,18 @@ export const deleteAccount = async (uid: string): Promise<ResponseType> => {
     return { success: true };
   } catch (error: any) {
     console.error("Error deleting account:", error);
+    return { success: false, msg: error.message };
+  }
+};
+
+export const updateEmotionTags = async (
+  uid: string,
+  tags: string[]
+): Promise<ResponseType> => {
+  try {
+    await setDoc(doc(firestore, "users", uid), { emotionTags: tags }, { merge: true });
+    return { success: true };
+  } catch (error: any) {
     return { success: false, msg: error.message };
   }
 };

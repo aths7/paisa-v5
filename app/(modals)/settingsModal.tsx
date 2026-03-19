@@ -58,18 +58,15 @@ const SettingsModal = () => {
     setReauthError("");
 
     try {
-      // Step 1: Re-authenticate so Firebase allows account deletion
       const credential = EmailAuthProvider.credential(user.email!, password);
       await reauthenticateWithCredential(auth.currentUser!, credential);
 
-      // Step 2: Delete all Firestore data + Firebase Auth account
       const res = await deleteAccount(user.uid);
 
       if (!res.success) {
         setLoading(false);
         Alert.alert("Error", res.msg || "Failed to delete account. Please try again.");
       }
-      // On success, Firebase Auth deletion triggers onAuthStateChanged → auto-navigates to welcome
     } catch (error: any) {
       setLoading(false);
       const msg: string = error.message || "";
@@ -89,10 +86,7 @@ const SettingsModal = () => {
       "This will scan your user, wallets, and transactions once and repair fields that were accidentally encrypted multiple times. Correctly encrypted fields will be left unchanged.",
       [
         { text: "Cancel", style: "cancel" },
-        {
-          text: "Run Repair",
-          onPress: handleRepairData,
-        },
+        { text: "Run Repair", onPress: handleRepairData },
       ]
     );
   };
@@ -132,12 +126,7 @@ const SettingsModal = () => {
 
         <View style={styles.content}>
           <View style={styles.utilitySection}>
-            <Typo
-              size={13}
-              color={colors.neutral400}
-              fontWeight={"600"}
-              style={styles.sectionLabel}
-            >
+            <Typo size={13} color={colors.neutral400} fontWeight="600" style={styles.sectionLabel}>
               DATA REPAIR
             </Typo>
 
@@ -147,49 +136,32 @@ const SettingsModal = () => {
               disabled={loading || repairLoading}
             >
               <View style={styles.repairIconWrapper}>
-                <Icons.Wrench
-                  size={verticalScale(22)}
-                  color={colors.primary}
-                  weight="bold"
-                />
+                <Icons.Wrench size={verticalScale(22)} color={colors.primary} weight="bold" />
               </View>
-
-              <View style={styles.deleteTextWrapper}>
-                <Typo size={16} fontWeight={"600"} color={colors.text}>
+              <View style={styles.buttonTextWrapper}>
+                <Typo size={16} fontWeight="600" color={colors.text}>
                   Repair Corrupted Encrypted Data
                 </Typo>
                 <Typo size={13} color={colors.neutral400}>
                   Repairs user name, wallet names, transaction categories, and descriptions once
                 </Typo>
               </View>
-
               {repairLoading ? (
-                <Typo size={13} color={colors.neutral400}>
-                  Running...
-                </Typo>
+                <Typo size={13} color={colors.neutral400}>Running...</Typo>
               ) : (
-                <Icons.CaretRight
-                  size={verticalScale(18)}
-                  color={colors.neutral500}
-                  weight="bold"
-                />
+                <Icons.CaretRight size={verticalScale(18)} color={colors.neutral500} weight="bold" />
               )}
             </TouchableOpacity>
           </View>
 
           <View style={styles.dangerSection}>
-            <Typo
-              size={13}
-              color={colors.neutral400}
-              fontWeight={"600"}
-              style={styles.sectionLabel}
-            >
+            <Typo size={13} color={colors.neutral400} fontWeight="600" style={styles.sectionLabel}>
               DANGER ZONE
             </Typo>
 
             {showReauthForm ? (
               <View style={styles.reauthForm}>
-                <Typo size={15} fontWeight={"600"} color={colors.rose}>
+                <Typo size={15} fontWeight="600" color={colors.rose}>
                   Confirm your password to delete
                 </Typo>
                 <Typo size={13} color={colors.neutral400}>
@@ -205,18 +177,12 @@ const SettingsModal = () => {
                     if (reauthError) setReauthError("");
                   }}
                   icon={
-                    <Icons.Lock
-                      size={verticalScale(22)}
-                      color={colors.neutral400}
-                      weight="fill"
-                    />
+                    <Icons.Lock size={verticalScale(22)} color={colors.neutral400} weight="fill" />
                   }
                 />
 
                 {reauthError ? (
-                  <Typo size={13} color={colors.rose}>
-                    {reauthError}
-                  </Typo>
+                  <Typo size={13} color={colors.rose}>{reauthError}</Typo>
                 ) : null}
 
                 <Button
@@ -224,7 +190,7 @@ const SettingsModal = () => {
                   onPress={handleConfirmDelete}
                   style={styles.confirmDeleteButton}
                 >
-                  <Typo size={16} fontWeight={"700"} color={colors.white}>
+                  <Typo size={16} fontWeight="700" color={colors.white}>
                     Delete Everything
                   </Typo>
                 </Button>
@@ -238,9 +204,7 @@ const SettingsModal = () => {
                   style={styles.cancelLink}
                   disabled={loading}
                 >
-                  <Typo size={14} color={colors.neutral400}>
-                    Cancel
-                  </Typo>
+                  <Typo size={14} color={colors.neutral400}>Cancel</Typo>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -250,27 +214,17 @@ const SettingsModal = () => {
                 disabled={loading}
               >
                 <View style={styles.deleteIconWrapper}>
-                  <Icons.Trash
-                    size={verticalScale(22)}
-                    color={colors.rose}
-                    weight="bold"
-                  />
+                  <Icons.Trash size={verticalScale(22)} color={colors.rose} weight="bold" />
                 </View>
-
-                <View style={styles.deleteTextWrapper}>
-                  <Typo size={16} fontWeight={"600"} color={colors.rose}>
+                <View style={styles.buttonTextWrapper}>
+                  <Typo size={16} fontWeight="600" color={colors.rose}>
                     Delete Account & Data
                   </Typo>
                   <Typo size={13} color={colors.neutral400}>
                     Permanently removes your account, all wallets, and all transactions
                   </Typo>
                 </View>
-
-                <Icons.CaretRight
-                  size={verticalScale(18)}
-                  color={colors.neutral500}
-                  weight="bold"
-                />
+                <Icons.CaretRight size={verticalScale(18)} color={colors.neutral500} weight="bold" />
               </TouchableOpacity>
             )}
           </View>
@@ -291,29 +245,16 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: spacingY._20,
   },
-  utilitySection: {
-    marginTop: spacingY._10,
-    marginBottom: spacingY._20,
-  },
   sectionLabel: {
     letterSpacing: 1,
     marginBottom: spacingY._10,
     paddingHorizontal: spacingX._5,
   },
+  utilitySection: {
+    marginBottom: spacingY._20,
+  },
   dangerSection: {
     marginTop: spacingY._10,
-  },
-  deleteButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacingX._12,
-    backgroundColor: colors.neutral800,
-    borderRadius: radius._15,
-    borderCurve: "continuous",
-    borderWidth: 1,
-    borderColor: colors.rose,
-    paddingHorizontal: spacingX._15,
-    paddingVertical: verticalScale(14),
   },
   repairButton: {
     flexDirection: "row",
@@ -327,13 +268,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacingX._15,
     paddingVertical: verticalScale(14),
   },
-  deleteIconWrapper: {
-    width: verticalScale(40),
-    height: verticalScale(40),
-    borderRadius: radius._10,
-    backgroundColor: "#3b0000",
+  deleteButton: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: spacingX._12,
+    backgroundColor: colors.neutral800,
+    borderRadius: radius._15,
+    borderCurve: "continuous",
+    borderWidth: 1,
+    borderColor: colors.rose,
+    paddingHorizontal: spacingX._15,
+    paddingVertical: verticalScale(14),
   },
   repairIconWrapper: {
     width: verticalScale(40),
@@ -343,7 +288,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  deleteTextWrapper: {
+  deleteIconWrapper: {
+    width: verticalScale(40),
+    height: verticalScale(40),
+    borderRadius: radius._10,
+    backgroundColor: "#3b0000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  buttonTextWrapper: {
     flex: 1,
     gap: verticalScale(3),
   },
