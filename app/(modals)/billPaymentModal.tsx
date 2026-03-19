@@ -26,6 +26,7 @@ import {
 import { WalletType } from "@/types";
 import { orderBy } from "firebase/firestore";
 import { markCreditCardBillPaid } from "@/services/walletService";
+import { formatIndianNumber } from "@/utils/common";
 import Input from "@/components/Input";
 
 const BillPaymentModal = () => {
@@ -102,7 +103,7 @@ const BillPaymentModal = () => {
   const bankDropdownData = bankAccounts.map((w) => {
     const balance = w.currentBalance ?? w.amount ?? 0;
     return {
-      label: `${w.name} (₹${balance.toFixed(2)})`,
+      label: `${w.name} (₹${formatIndianNumber(balance)})`,
       value: w.id,
     };
   });
@@ -133,7 +134,7 @@ const BillPaymentModal = () => {
             <View style={styles.pendingRow}>
               <Typo size={14} color={colors.neutral400}>Total Pending</Typo>
               <Typo size={20} fontWeight="700" color={colors.rose}>
-                ₹ {pendingAmount.toFixed(2)}
+                ₹{formatIndianNumber(pendingAmount)}
               </Typo>
             </View>
           </View>
@@ -187,7 +188,7 @@ const BillPaymentModal = () => {
               }}
             />
             <Typo size={12} color={colors.neutral500}>
-              Partial payments supported (max ₹{pendingAmount.toFixed(2)})
+              Partial payments supported (max ₹{formatIndianNumber(pendingAmount)})
             </Typo>
           </View>
 

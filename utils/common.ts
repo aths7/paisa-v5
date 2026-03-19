@@ -1,3 +1,31 @@
+/**
+ * Formats a number using Indian locale (e.g. 1,00,000.00).
+ * Use `decimals: 0` for whole numbers.
+ */
+export const formatIndianNumber = (value: number, decimals = 2): string =>
+  new Intl.NumberFormat("en-IN", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(value);
+
+/** Returns "₹1,00,000.00" */
+export const formatRupees = (value: number, decimals = 2): string =>
+  `₹${formatIndianNumber(value, decimals)}`;
+
+/**
+ * Returns a compact rupee string suited for tight UI (cards, badges).
+ * ≥ 1 Cr  → "₹1.20Cr"
+ * ≥ 1 L   → "₹4.99L"
+ * ≥ 1 K   → "₹24.1K"
+ * < 1 K   → "₹850"
+ */
+export const formatCompact = (value: number): string => {
+  if (value >= 10000000) return `₹${(value / 10000000).toFixed(2)}Cr`;
+  if (value >= 100000) return `₹${(value / 100000).toFixed(2)}L`;
+  if (value >= 1000) return `₹${(value / 1000).toFixed(1)}K`;
+  return `₹${formatIndianNumber(value, 0)}`;
+};
+
 export const getLast7Days = () => {
   const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const result = [];

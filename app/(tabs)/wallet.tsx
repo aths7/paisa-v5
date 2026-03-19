@@ -1,32 +1,22 @@
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
-import React, { useEffect, useState } from "react";
+import { FlatList, StyleSheet, TouchableOpacity, View } from "react-native";
+import React from "react";
 import ScreenWrapper from "@/components/ScreenWrapper";
 import Typo from "@/components/Typo";
-import { scale, verticalScale } from "@/utils/styling";
+import { verticalScale } from "@/utils/styling";
 import { colors, radius, spacingX, spacingY } from "@/constants/theme";
-import Button from "@/components/Button";
 import * as Icons from "phosphor-react-native";
-import { useFocusEffect, useRouter } from "expo-router";
-import Header from "@/components/Header";
+import { useRouter } from "expo-router";
 import useDecryptedData from "@/hooks/useDecryptedData";
 import { WALLET_STRING_FIELDS, WALLET_NUMERIC_FIELDS } from "@/services/encryptionService";
 import { WalletType } from "@/types";
 import { orderBy } from "firebase/firestore";
 import Loading from "@/components/Loading";
+import { formatIndianNumber } from "@/utils/common";
 import WalletListItem from "@/components/WalletListItem";
+
 const Wallet = () => {
   const router = useRouter();
-  const {
-    data: wallets,
-    loading,
-    error,
-  } = useDecryptedData<WalletType>(
+  const { data: wallets, loading } = useDecryptedData<WalletType>(
     "wallets",
     WALLET_STRING_FIELDS,
     WALLET_NUMERIC_FIELDS,
@@ -37,9 +27,7 @@ const Wallet = () => {
   const getTotalBalance = () =>
     wallets
       .filter((item) => item.walletType !== "credit_card")
-      .reduce((total, item) => {
-        return total + (item.currentBalance ?? item.amount ?? 0);
-      }, 0);
+      .reduce((total, item) => total + (item.currentBalance ?? item.amount ?? 0), 0);
 
   return (
     <ScreenWrapper style={{ backgroundColor: colors.black }}>
@@ -47,8 +35,8 @@ const Wallet = () => {
         {/* balance view */}
         <View style={styles.balanceView}>
           <View style={{ alignItems: "center" }}>
-            <Typo size={45} fontWeight={"500"}>
-              ₹{getTotalBalance()?.toFixed(2)}
+            <Typo size={45} fontWeight="500">
+              ₹{formatIndianNumber(getTotalBalance())}
             </Typo>
             <Typo size={16} color={colors.neutral300}>
               In Hand
@@ -58,14 +46,9 @@ const Wallet = () => {
 
         {/* wallets */}
         <View style={styles.wallets}>
-          {/* header */}
           <View style={styles.flexRow}>
-            <Typo size={20} fontWeight={"500"}>
-              My Wallets
-            </Typo>
-            <TouchableOpacity
-              onPress={() => router.push("/(modals)/walletModal")}
-            >
+            <Typo size={20} fontWeight="500">My Wallets</Typo>
+            <TouchableOpacity onPress={() => router.push("/(modals)/walletModal")}>
               <Icons.PlusCircle
                 weight="fill"
                 color={colors.primary}
@@ -74,7 +57,6 @@ const Wallet = () => {
             </TouchableOpacity>
           </View>
 
-          {/* wallets data */}
           {loading && <Loading />}
           <FlatList
             data={wallets}
@@ -82,7 +64,6 @@ const Wallet = () => {
               <WalletListItem item={item} router={router} index={index} />
             )}
             contentContainerStyle={styles.listStyle}
-          // keyExtractor={(item) => item.id}
           />
         </View>
       </View>
@@ -113,7 +94,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.neutral900,
     borderTopRightRadius: radius._30,
-
     borderTopLeftRadius: radius._30,
     padding: spacingX._20,
     paddingTop: spacingX._25,

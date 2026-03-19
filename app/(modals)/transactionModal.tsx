@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ImageUpload from "@/components/ImageUpload";
 import { expenseCategories, transactionTypes } from "@/constants/data";
+import { formatIndianNumber } from "@/utils/common";
 import { useAuth } from "@/contexts/authContext";
 import useDecryptedData from "@/hooks/useDecryptedData";
 import { WALLET_STRING_FIELDS, WALLET_NUMERIC_FIELDS } from "@/services/encryptionService";
@@ -395,8 +396,8 @@ const TransactionModal = () => {
                     : wallet.currentBalance ?? wallet.amount ?? 0;
                 const suffix =
                   wallet.walletType === "credit_card"
-                    ? `₹${balance.toFixed(2)} due`
-                    : `₹${balance.toFixed(2)}`;
+                    ? `₹${formatIndianNumber(balance)} due`
+                    : `₹${formatIndianNumber(balance)}`;
                 return {
                   label: `${wallet?.name} (${suffix})`,
                   value: wallet?.id,

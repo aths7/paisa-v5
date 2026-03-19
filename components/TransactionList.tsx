@@ -10,6 +10,7 @@ import {
 import * as Icons from "phosphor-react-native";
 import { expenseCategories, incomeCategory } from "@/constants/data";
 import { verticalScale } from "@/utils/styling";
+import { formatIndianNumber } from "@/utils/common";
 import Loading from "./Loading";
 import { Timestamp } from "firebase/firestore";
 import { useRouter } from "expo-router";
@@ -151,7 +152,7 @@ const TransactionItem = ({
           <Typo
             fontWeight={"500"}
             color={item?.type == "income" ? colors.primary : colors.rose}
-          >{`${item?.type == "income" ? "+ ₹" : "- ₹"}${item?.amount}`}</Typo>
+          >{`${item?.type == "income" ? "+₹" : "-₹"}${formatIndianNumber(Number(item?.amount))}`}</Typo>
           <Typo size={13} color={colors.neutral400}>
             {date}
           </Typo>

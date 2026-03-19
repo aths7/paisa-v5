@@ -7,6 +7,7 @@ import { colors, radius, spacingX, spacingY } from "@/constants/theme";
 import Typo from "./Typo";
 import * as Icons from "phosphor-react-native";
 import { Router } from "expo-router";
+import { formatIndianNumber } from "@/utils/common";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 const WALLET_TYPE_LABELS: Record<string, string> = {
@@ -29,13 +30,13 @@ const getDisplayInfo = (item: WalletType) => {
     const limit = item.creditLimit ?? 0;
     const available = Math.max(limit - pending, 0);
     return {
-      primaryLabel: `₹${pending.toFixed(2)} due`,
-      secondaryLabel: `₹${available.toFixed(2)} available`,
+      primaryLabel: `₹${formatIndianNumber(pending)} due`,
+      secondaryLabel: `₹${formatIndianNumber(available)} available`,
     };
   }
   const balance = item.currentBalance ?? item.amount ?? 0;
   return {
-    primaryLabel: `₹${balance.toFixed(2)}`,
+    primaryLabel: `₹${formatIndianNumber(balance)}`,
     secondaryLabel: null,
   };
 };
