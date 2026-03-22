@@ -37,7 +37,7 @@ function StackLayout() {
   // }
 
   return (
-    <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+    <Stack screenOptions={{ headerShown: false, animationDuration: 250 }} initialRouteName="index">
       <Stack.Screen
         name="(modals)/transactionModal"
         options={{

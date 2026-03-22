@@ -4,6 +4,7 @@ import { scale, verticalScale } from "@/utils/styling";
 import * as Icons from "phosphor-react-native";
 import { colors } from "@/constants/theme";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Haptics from "expo-haptics";
 
 // Minimum tappable area per platform guidelines
 const MIN_TAP = Platform.OS === "ios" ? 44 : 48;
@@ -54,6 +55,7 @@ function CustomTabs({ state, descriptors, navigation }: BottomTabBarProps) {
         const isFocused = state.index === index;
 
         const onPress = () => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           const event = navigation.emit({
             type: "tabPress",
             target: route.key,
