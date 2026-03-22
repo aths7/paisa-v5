@@ -39,18 +39,18 @@ const Profile = () => {
       routeName: "/(modals)/profileModal",
       bgColor: "#6366f1",
     },
-    // {
-    //   title: "Exepnse Categories",
-    //   icon: (
-    //     <Icons.SquaresFour
-    //       size={verticalScale(26)}
-    //       color={colors.white}
-    //       weight="fill"
-    //     />
-    //   ),
-    //   routeName: "/(modals)/categoryModal",
-    //   bgColor: "#10b981",
-    // },
+    {
+      title: "Expense Categories",
+      icon: (
+        <Icons.SquaresFour
+          size={verticalScale(26)}
+          color={colors.white}
+          weight="fill"
+        />
+      ),
+      routeName: "/(modals)/categoryModal",
+      bgColor: "#10b981",
+    },
     {
       title: "Emotion Tags",
       icon: (

@@ -137,6 +137,7 @@ export type UserType = {
   name: string | null;
   image?: any;
   emotionTags?: string[];
+  expenseCategories?: string[];
 } | null;
 
 export type UserDataType = {

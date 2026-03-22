@@ -23,7 +23,7 @@ export default ModalWrapper;
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: isIos ? spacingX._15 : 50,
+    paddingTop: isIos ? spacingY._30 : 50,
     paddingBottom: spacingY._20,
     flex: 1,
   },

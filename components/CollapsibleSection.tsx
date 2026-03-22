@@ -47,7 +47,7 @@ const CollapsibleSection = ({ title, optional, defaultOpen = true, children }: P
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} pointerEvents="box-none">
       <TouchableOpacity style={styles.header} onPress={toggle} activeOpacity={0.7}>
         <View style={styles.titleRow}>
           <Typo color={colors.neutral200} size={16} fontWeight="500">

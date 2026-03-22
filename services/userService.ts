@@ -118,6 +118,18 @@ export const deleteAccount = async (uid: string): Promise<ResponseType> => {
   }
 };
 
+export const updateExpenseCategories = async (
+  uid: string,
+  categories: string[]
+): Promise<ResponseType> => {
+  try {
+    await setDoc(doc(firestore, "users", uid), { expenseCategories: categories }, { merge: true });
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, msg: error.message };
+  }
+};
+
 export const updateEmotionTags = async (
   uid: string,
   tags: string[]

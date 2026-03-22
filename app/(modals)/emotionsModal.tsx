@@ -90,6 +90,7 @@ const EmotionsModal = () => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
         >
           {/* Info banner */}
           <View style={styles.infoBanner}>

@@ -80,6 +80,12 @@ function StackLayout() {
           presentation: "modal",
         }}
       />
+      <Stack.Screen
+        name="(modals)/emotionsModal"
+        options={{
+          presentation: "modal",
+        }}
+      />
     </Stack>
   );
 }

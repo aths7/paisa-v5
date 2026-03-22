@@ -32,7 +32,7 @@ const walletPillW = (SCREEN_W - FORM_H_PAD - PILL_GAP) / 2;       // 2 columns
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ImageUpload from "@/components/ImageUpload";
-import { expenseCategories } from "@/constants/data";
+import { DEFAULT_EXPENSE_CATEGORIES, expenseCategories } from "@/constants/data";
 import { formatIndianNumber } from "@/utils/common";
 import { useAuth } from "@/contexts/authContext";
 import { PurchaseStyle } from "@/types";
@@ -115,6 +115,14 @@ const TransactionModal = () => {
   const DEFAULT_EMOTION_TAGS = ["happy", "sad", "stressed", "neutral", "excited", "anxious", "content", "bored"];
   const emotionOptions = (user?.emotionTags?.length ? user.emotionTags : DEFAULT_EMOTION_TAGS)
     .map((e) => ({ label: e.charAt(0).toUpperCase() + e.slice(1), value: e }));
+
+  const categoryKeys = user?.expenseCategories?.length ? user.expenseCategories : DEFAULT_EXPENSE_CATEGORIES;
+  const categoryOptions = categoryKeys.map((value) => ({
+    label:
+      expenseCategories[value as keyof typeof expenseCategories]?.label ||
+      value.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" "),
+    value,
+  }));
 
   const [transaction, setTransaction] = useState<TransactionType>({
     type: "expense",
@@ -346,7 +354,7 @@ const TransactionModal = () => {
           {transaction.type === "expense" && (
             <CollapsibleSection title="Category" optional defaultOpen={false}>
               <View style={styles.emotionRow}>
-                {Object.values(expenseCategories).map(({ label, value }) => {
+                {categoryOptions.map(({ label, value }) => {
                   const active = transaction.category === value;
                   return (
                     <TouchableOpacity
@@ -416,11 +424,11 @@ const TransactionModal = () => {
               multiline
               numberOfLines={2}
               containerStyle={{
-                flexDirection: "row",
                 height: verticalScale(100),
-                alignItems: "flex-start",
+                alignItems: "stretch",
                 paddingVertical: 15,
               }}
+              inputStyle={{ textAlignVertical: "top" }}
               onChangeText={(value) =>
                 setTransaction({ ...transaction, description: value })
               }

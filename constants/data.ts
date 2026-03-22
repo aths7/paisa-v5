@@ -4,6 +4,12 @@ import { colors } from "./theme";
 import * as Icons from "phosphor-react-native"; // Import all icons dynamically
 
 export const expenseCategories: ExpenseCategoriesType = {
+  food: {
+    label: "Food",
+    value: "food",
+    icon: Icons.ForkKnife,
+    bgColor: "#b45309",
+  },
   groceries: {
     label: "Groceries",
     value: "groceries",
@@ -83,6 +89,8 @@ export const expenseCategories: ExpenseCategoriesType = {
     bgColor: "#1d4ed8", // Blue
   },
 };
+
+export const DEFAULT_EXPENSE_CATEGORIES = Object.keys(expenseCategories);
 
 export const incomeCategory: CategoryType = {
   label: "Income",
