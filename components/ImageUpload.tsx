@@ -46,24 +46,32 @@ const ImageUpload = ({
         </TouchableOpacity>
       )}
 
-      {file && (
-        <View style={[styles.image, imageStyle && imageStyle]}>
-          <Image
-            style={{ flex: 1 }}
-            source={getFilePath(file)}
-            //   placeholder={{ blurhash }}
-            contentFit="cover"
-            transition={100}
-          />
-          <TouchableOpacity onPress={() => onClear()} style={styles.deleteIcon}>
-            <Icons.XCircle
-              color={colors.white}
-              size={verticalScale(24)}
-              weight="fill"
-            />
-          </TouchableOpacity>
-        </View>
-      )}
+      {file && (() => {
+        const isEmoji = typeof file === "string" && !file.startsWith("http");
+        return (
+          <View style={[styles.image, imageStyle && imageStyle]}>
+            {isEmoji ? (
+              <View style={styles.emojiContainer}>
+                <Typo size={52}>{file}</Typo>
+              </View>
+            ) : (
+              <Image
+                style={{ flex: 1 }}
+                source={getFilePath(file)}
+                contentFit="cover"
+                transition={100}
+              />
+            )}
+            <TouchableOpacity onPress={() => onClear()} style={styles.deleteIcon}>
+              <Icons.XCircle
+                color={colors.white}
+                size={verticalScale(24)}
+                weight="fill"
+              />
+            </TouchableOpacity>
+          </View>
+        );
+      })()}
     </View>
   );
 };
@@ -77,6 +85,12 @@ const styles = StyleSheet.create({
     borderRadius: radius._15,
     borderCurve: "continuous",
     overflow: "hidden",
+  },
+  emojiContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.neutral700,
   },
   inputContainer: {
     height: verticalScale(54),

@@ -11,7 +11,6 @@ import { WALLET_STRING_FIELDS, WALLET_NUMERIC_FIELDS } from "@/services/encrypti
 import { WalletType } from "@/types";
 import { orderBy } from "firebase/firestore";
 import Loading from "@/components/Loading";
-import { formatIndianNumber } from "@/utils/common";
 import WalletListItem from "@/components/WalletListItem";
 
 const Wallet = () => {
@@ -23,27 +22,9 @@ const Wallet = () => {
     [orderBy("created", "desc")]
   );
 
-  // In Hand = sum of currentBalance for non-CC wallets (legacy `amount` as fallback)
-  const getTotalBalance = () =>
-    wallets
-      .filter((item) => item.walletType !== "credit_card")
-      .reduce((total, item) => total + (item.currentBalance ?? item.amount ?? 0), 0);
-
   return (
     <ScreenWrapper style={{ backgroundColor: colors.black }}>
       <View style={styles.container}>
-        {/* balance view */}
-        <View style={styles.balanceView}>
-          <View style={{ alignItems: "center" }}>
-            <Typo size={45} fontWeight="500">
-              ₹{formatIndianNumber(getTotalBalance())}
-            </Typo>
-            <Typo size={16} color={colors.neutral300}>
-              In Hand
-            </Typo>
-          </View>
-        </View>
-
         {/* wallets */}
         <View style={styles.wallets}>
           <View style={styles.flexRow}>
@@ -76,13 +57,6 @@ export default Wallet;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "space-between",
-  },
-  balanceView: {
-    height: verticalScale(160),
-    backgroundColor: colors.black,
-    justifyContent: "center",
-    alignItems: "center",
   },
   flexRow: {
     flexDirection: "row",

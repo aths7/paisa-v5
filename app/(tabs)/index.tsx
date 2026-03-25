@@ -187,10 +187,7 @@ const Home = () => {
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <View style={{ gap: 4 }}>
-            <Typo size={16} color={colors.neutral400}>Hello,</Typo>
-            <Typo fontWeight="500" size={20}>{user?.name || " "}</Typo>
-          </View>
+          <Typo size={20}>Hello, <Typo size={20} fontWeight="600">{user?.name || " "}</Typo></Typo>
           <TouchableOpacity
             onPress={() => router.push("/(modals)/searchModal")}
             style={styles.searchIcon}

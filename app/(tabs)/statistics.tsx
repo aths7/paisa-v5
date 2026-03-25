@@ -1,4 +1,5 @@
 import Header from "@/components/Header";
+import { getEmotionColor } from "@/app/(modals)/emotionsModal";
 import Loading from "@/components/Loading";
 import ScreenWrapper from "@/components/ScreenWrapper";
 import TransactionList from "@/components/TransactionList";
@@ -25,15 +26,10 @@ import {
 } from "react-native";
 import { BarChart } from "react-native-gifted-charts";
 
-const EMOTION_COLORS = [
-  "#818cf8", "#f472b6", "#fb923c", "#34d399",
-  "#38bdf8", "#a78bfa", "#fbbf24", "#f87171",
-];
-
 const Analytics = () => {
   const { user } = useAuth();
 
-  const [activeMainTab, setActiveMainTab] = useState(0); // 0 = Statistics, 1 = Emotions
+  const [activeMainTab, setActiveMainTab] = useState(0); // 0 = Emotions, 1 = Statistics
   const [activePeriod, setActivePeriod] = useState(0);  // 0 = Weekly, 1 = Monthly, 2 = Yearly
   const [chartLoading, setChartLoading] = useState(false);
   const [chartData, setChartData] = useState([]);
@@ -126,7 +122,7 @@ const Analytics = () => {
 
         {/* Main tab switcher */}
         <View style={styles.mainTabRow}>
-          {["Statistics", "Emotions"].map((tab, i) => (
+          {["Emotions", "Statistics"].map((tab, i) => (
             <TouchableOpacity
               key={tab}
               style={[styles.mainTabPill, activeMainTab === i && styles.mainTabPillActive]}
@@ -161,7 +157,7 @@ const Analytics = () => {
           />
 
           {/* ── Statistics tab ── */}
-          {activeMainTab === 0 && (
+          {activeMainTab === 1 && (
             <>
               <View style={styles.chartContainer}>
                 {chartData.length > 0 ? (
@@ -209,7 +205,7 @@ const Analytics = () => {
           )}
 
           {/* ── Emotions tab ── */}
-          {activeMainTab === 1 && (
+          {activeMainTab === 0 && (
             <>
               {chartLoading && (
                 <View style={styles.loadingWrap}>
@@ -278,7 +274,7 @@ const Analytics = () => {
                       behaviorStats.totalExpense > 0
                         ? (total / behaviorStats.totalExpense) * 100
                         : 0;
-                    const barColor = EMOTION_COLORS[idx % EMOTION_COLORS.length];
+                    const barColor = getEmotionColor(emotion, user?.emotionColors, user?.emotionTags);
                     return (
                       <View key={emotion} style={styles.emotionRow}>
                         <Typo size={13} style={{ width: scale(72) }}>
