@@ -9,6 +9,8 @@ import { colors, radius, spacingX, spacingY } from "@/constants/theme";
 import { scale, verticalScale } from "@/utils/styling";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as Icons from "phosphor-react-native";
+import * as Haptics from "expo-haptics";
+import ConfettiCannon from "react-native-confetti-cannon";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -108,6 +110,8 @@ const TransactionModal = () => {
 
   const [loading, setLoading] = useState(false);
   const [amountStr, setAmountStr] = useState("");
+  const [showConfetti, setShowConfetti] = useState(false);
+  const isEdit = Boolean(oldTransaction?.id);
 
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -208,9 +212,28 @@ const TransactionModal = () => {
     setLoading(true);
 
     const res = await createOrUpdateTransaction(transactionData);
-    // console.log("transaction: ", res);
     setLoading(false);
     if (res.success) {
+      if (!isEdit) {
+        // Always fire haptic + confetti for new transactions
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setShowConfetti(true);
+
+        const streakResult = res.data?.streak;
+        if (streakResult?.isFirstToday) {
+          // First entry today — navigate to celebration modal after brief confetti start
+          setTimeout(() => {
+            router.replace({
+              pathname: "/(modals)/streakCelebrationModal",
+              params: {
+                streakCount: String(streakResult.newStreak),
+                action: streakResult.action,
+              },
+            });
+          }, 150);
+          return;
+        }
+      }
       router.back();
     } else {
       Alert.alert("Transaction", res.msg);
@@ -524,6 +547,20 @@ const TransactionModal = () => {
           </Typo>
         </Button>
       </Animated.View>
+
+      {/* Confetti — rendered last so it appears above all content */}
+      {showConfetti && (
+        <ConfettiCannon
+          count={120}
+          origin={{ x: Dimensions.get("window").width / 2, y: -20 }}
+          autoStart={true}
+          fadeOut={true}
+          colors={[colors.primary, "#ffffff", "#fbbf24", "#f97316"]}
+          onAnimationEnd={() => setShowConfetti(false)}
+          fallSpeed={3000}
+          explosionSpeed={350}
+        />
+      )}
     </ModalWrapper>
   );
 };

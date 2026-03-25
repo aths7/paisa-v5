@@ -4,7 +4,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import ScreenWrapper from "@/components/ScreenWrapper";
 import Typo from "@/components/Typo";
 import { StatusBar } from "expo-status-bar";
@@ -12,6 +13,9 @@ import { colors, radius, spacingX, spacingY } from "@/constants/theme";
 import * as Icons from "phosphor-react-native";
 import { scale, verticalScale } from "@/utils/styling";
 import HomeCard from "@/components/HomeCard";
+import StreakHomeCard from "@/components/StreakHomeCard";
+import { getStreakData } from "@/services/streakService";
+import { StreakType } from "@/types";
 import Button from "@/components/Button";
 import { useAuth } from "@/contexts/authContext";
 import { useRouter } from "expo-router";
@@ -46,6 +50,17 @@ const Home = () => {
     year: now.getFullYear(),
     month: now.getMonth(),
   });
+
+  const [streakData, setStreakData] = useState<StreakType | null>(null);
+
+  // Re-fetch streak every time the home tab gains focus so the card stays fresh
+  // after returning from the transaction or celebration modal
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.uid) return;
+      getStreakData(user.uid).then(setStreakData);
+    }, [user?.uid])
+  );
 
   // Fetch last 100 transactions (client-side filtering by month)
   const {
@@ -239,6 +254,14 @@ const Home = () => {
               monthLabel={selectedMonth.label}
             />
           </View>
+
+          {/* Streak card — hidden until first transaction creates the streak doc */}
+          {streakData !== null && (
+            <StreakHomeCard
+              currentStreak={streakData.currentStreak}
+              onPress={() => router.push("/(modals)/streakDetailsModal")}
+            />
+          )}
 
           {/* Getting started card */}
           {showSetupCard && (

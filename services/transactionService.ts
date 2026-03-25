@@ -1,5 +1,6 @@
 import { ResponseType, TransactionType, WalletType } from "@/types";
 import { uploadFileToCloudinary } from "./imageService";
+import { updateStreakOnEntry } from "./streakService";
 import {
   collection,
   deleteDoc,
@@ -166,7 +167,14 @@ export const createOrUpdateTransaction = async (
     );
     await setDoc(transactionRef, encryptedTransaction, { merge: true });
 
-    return { success: true, data: { ...transactionData, id: transactionRef.id } };
+    // Evaluate streak — only for new transactions (no id before save)
+    // Deletes and edits do not count as new entries in V1.
+    let streak = undefined;
+    if (!id) {
+      streak = await updateStreakOnEntry(uid);
+    }
+
+    return { success: true, data: { ...transactionData, id: transactionRef.id, streak } };
   } catch (error: any) {
     console.error("Error creating or updating transaction:", error);
     return { success: false, msg: error.message };

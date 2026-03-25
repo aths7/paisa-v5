@@ -86,6 +86,22 @@ function StackLayout() {
           presentation: "modal",
         }}
       />
+      <Stack.Screen
+        name="(modals)/streakCelebrationModal"
+        options={{
+          presentation: "fullScreenModal",
+          gestureEnabled: false,
+          animation: "fade",
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
+        name="(modals)/streakDetailsModal"
+        options={{
+          presentation: "modal",
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }

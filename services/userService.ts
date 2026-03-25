@@ -102,10 +102,18 @@ export const deleteAccount = async (uid: string): Promise<ResponseType> => {
       await walletBatch.commit();
     }
 
-    // 3. Delete the user document
+    // 3. Delete streak data
+    try {
+      await deleteDoc(doc(firestore, "users", uid, "streaks", "current"));
+    } catch (streakErr) {
+      // Non-critical — log but do not block account deletion
+      console.warn("Failed to delete streak doc:", streakErr);
+    }
+
+    // 4. Delete the user document
     await deleteDoc(doc(firestore, "users", uid));
 
-    // 4. Delete the Firebase Auth account
+    // 5. Delete the Firebase Auth account
     const currentUser = auth.currentUser;
     if (currentUser) {
       await deleteUser(currentUser);

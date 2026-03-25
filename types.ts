@@ -176,3 +176,34 @@ export type WalletType = {
   // Legacy field — kept for backward compat with old Firestore docs
   amount?: number;
 };
+
+// ---------------------------------------------------------------------------
+// Streak / Gamification types
+// ---------------------------------------------------------------------------
+
+export type StreakHistoryEntry = {
+  streak: number;
+  endedOn: string; // "YYYY-MM-DD"
+};
+
+export type MilestoneConfig = {
+  days: number;
+  label: string;
+  icon: string; // phosphor-react-native icon name
+  description: string;
+};
+
+export type StreakType = {
+  currentStreak: number;
+  longestStreak: number;
+  lastEntryDate: string; // "YYYY-MM-DD"
+  streakStartDate: string; // "YYYY-MM-DD"
+  history: StreakHistoryEntry[]; // max 2, newest first
+  updatedAt?: any;
+};
+
+export type StreakUpdateResult = {
+  action: "first_entry" | "continued" | "restarted";
+  newStreak: number;
+  isFirstToday: boolean; // false = already logged today, suppress modal
+};
