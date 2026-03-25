@@ -11,7 +11,7 @@ import * as Icons from "phosphor-react-native";
 import { expenseCategories, incomeCategory } from "@/constants/data";
 import { scale, verticalScale } from "@/utils/styling";
 import { formatIndianNumber } from "@/utils/common";
-import Loading from "./Loading";
+import PaisaLoader from "./PaisaLoader";
 import { Timestamp } from "firebase/firestore";
 import { useRouter } from "expo-router";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
@@ -92,7 +92,7 @@ const TransactionList = ({
       )}
       {loading && (
         <View style={{ top: verticalScale(100) }}>
-          <Loading />
+          <PaisaLoader />
         </View>
       )}
     </View>

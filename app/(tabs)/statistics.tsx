@@ -1,6 +1,6 @@
 import Header from "@/components/Header";
 import { getEmotionColor } from "@/app/(modals)/emotionsModal";
-import Loading from "@/components/Loading";
+import PaisaLoader from "@/components/PaisaLoader";
 import ScreenWrapper from "@/components/ScreenWrapper";
 import TransactionList from "@/components/TransactionList";
 import Typo from "@/components/Typo";
@@ -191,7 +191,7 @@ const Analytics = () => {
                 )}
                 {chartLoading && (
                   <View style={styles.chartLoadingContainer}>
-                    <Loading color="white" />
+                    <PaisaLoader />
                   </View>
                 )}
               </View>
@@ -209,7 +209,7 @@ const Analytics = () => {
             <>
               {chartLoading && (
                 <View style={styles.loadingWrap}>
-                  <Loading color="white" />
+                  <PaisaLoader />
                 </View>
               )}
 

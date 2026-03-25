@@ -7,7 +7,7 @@ import {
 } from "react-native";
 import React, { Children } from "react";
 import { CustomButtonProps } from "@/types";
-import Loading from "./Loading";
+import PaisaLoader from "./PaisaLoader";
 import Typo from "./Typo";
 import { colors, radius } from "@/constants/theme";
 import { verticalScale } from "@/utils/styling";
@@ -22,7 +22,7 @@ const Button = ({
   if (loading) {
     return (
       <View style={[styles.button, style, { backgroundColor: "transparent" }]}>
-        <Loading />
+        <PaisaLoader size={44} />
       </View>
     );
   }

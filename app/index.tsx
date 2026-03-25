@@ -2,7 +2,6 @@ import React, { useEffect } from "react";
 import { Href, Router, useRouter } from "expo-router";
 import ScreenWrapper from "@/components/ScreenWrapper";
 
-import Loading from "@/components/Loading";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { colors } from "@/constants/theme";
 import { StatusBar } from "expo-status-bar";

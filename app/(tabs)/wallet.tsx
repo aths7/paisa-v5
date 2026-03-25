@@ -10,7 +10,7 @@ import useDecryptedData from "@/hooks/useDecryptedData";
 import { WALLET_STRING_FIELDS, WALLET_NUMERIC_FIELDS } from "@/services/encryptionService";
 import { WalletType } from "@/types";
 import { orderBy } from "firebase/firestore";
-import Loading from "@/components/Loading";
+import PaisaLoader from "@/components/PaisaLoader";
 import WalletListItem from "@/components/WalletListItem";
 
 const Wallet = () => {
@@ -38,7 +38,7 @@ const Wallet = () => {
             </TouchableOpacity>
           </View>
 
-          {loading && <Loading />}
+          {loading && <PaisaLoader />}
           <FlatList
             data={wallets}
             renderItem={({ item, index }) => (
