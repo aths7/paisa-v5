@@ -141,3 +141,15 @@ export const updateEmotionTags = async (
     return { success: false, msg: error.message };
   }
 };
+
+export const updateEmotionColors = async (
+  uid: string,
+  emotionColors: Record<string, string>
+): Promise<ResponseType> => {
+  try {
+    await setDoc(doc(firestore, "users", uid), { emotionColors }, { merge: true });
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, msg: error.message };
+  }
+};

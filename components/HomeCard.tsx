@@ -41,7 +41,7 @@ const HomeCard = ({ monthlySpend = 0, monthLabel }: HomeCardProps) => {
           <Typo color={colors.neutral600} size={13} fontWeight="500">
             Total Spent
           </Typo>
-          <Typo color={colors.rose} size={36} fontWeight="bold">
+          <Typo color={colors.green} size={36} fontWeight="bold">
             {formatRupees(monthlySpend)}
           </Typo>
           {monthLabel ? (

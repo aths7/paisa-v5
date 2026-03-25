@@ -104,6 +104,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     email: data.email || null,
                     image: data.image || null,
                     emotionTags: data.emotionTags || [],
+                    emotionColors: data.emotionColors || {},
                     expenseCategories: data.expenseCategories || [],
                 };
                 setUser({ ...userData });

@@ -16,6 +16,8 @@ import { Timestamp } from "firebase/firestore";
 import { useRouter } from "expo-router";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { FlashList } from "@shopify/flash-list";
+import { useAuth } from "@/contexts/authContext";
+import { getEmotionColor } from "@/app/(modals)/emotionsModal";
 
 const TransactionList = ({
   data,
@@ -102,6 +104,7 @@ const TransactionItem = ({
   index,
   handleClick,
 }: TransactionItemProps) => {
+  const { user } = useAuth();
   const defaultExpenseCategory = {
     label: "Other",
     value: "other",
@@ -134,7 +137,7 @@ const TransactionItem = ({
           styles.row,
           {
             borderLeftWidth: 3,
-            borderLeftColor: item?.type === "income" ? colors.primary : colors.rose,
+            borderLeftColor: getEmotionColor(item.emotion, user?.emotionColors, user?.emotionTags),
           },
         ]}
         onPress={() => handleClick(item)}
@@ -159,8 +162,17 @@ const TransactionItem = ({
             {item?.description}
           </Typo>
           {item?.emotion && (
-            <View style={styles.emotionBadge}>
-              <Typo size={11} fontWeight="600" color="#a78bfa">
+            <View
+              style={[
+                styles.emotionBadge,
+                { backgroundColor: getEmotionColor(item.emotion, user?.emotionColors, user?.emotionTags) + "33" },
+              ]}
+            >
+              <Typo
+                size={11}
+                fontWeight="600"
+                color={getEmotionColor(item.emotion, user?.emotionColors, user?.emotionTags)}
+              >
                 {item.emotion.charAt(0).toUpperCase() + item.emotion.slice(1)}
               </Typo>
             </View>
@@ -169,8 +181,8 @@ const TransactionItem = ({
         <View style={styles.amountDate}>
           <Typo
             fontWeight={"500"}
-            color={item?.type == "income" ? colors.primary : colors.rose}
-          >{`${item?.type == "income" ? "+₹" : "-₹"}${formatIndianNumber(Number(item?.amount))}`}</Typo>
+            color={colors.green}
+          >{`₹${formatIndianNumber(Number(item?.amount))}`}</Typo>
           <Typo size={13} color={colors.neutral400}>
             {date}
           </Typo>
@@ -222,7 +234,7 @@ const styles = StyleSheet.create({
   },
   emotionBadge: {
     alignSelf: "flex-start",
-    backgroundColor: "#a78bfa22",
+    backgroundColor: "transparent",
     borderRadius: 99,
     paddingHorizontal: scale(7),
     paddingVertical: 2,
