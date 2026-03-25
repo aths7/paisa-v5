@@ -63,7 +63,6 @@ export type BackButtonProps = {
   iconSize?: number;
 };
 
-export type WalletKind = "credit_card" | "bank_account" | "upi_lite" | "cash";
 export type PurchaseStyle = "impulsive" | "non_impulsive";
 
 export type TransactionType = {
@@ -76,7 +75,6 @@ export type TransactionType = {
   image?: any;
   uid?: string;
   walletId: string;
-  walletType?: WalletKind;
   transactionSource?: "manual" | "credit_card_bill_payment";
   linkedWalletId?: string;
   purchaseStyle?: PurchaseStyle;
@@ -169,23 +167,11 @@ export type ResponseType = {
 export type WalletType = {
   id?: string;
   name: string;
-  walletType?: WalletKind;
   image: any;
   uid?: string;
   created?: Date | Timestamp | string;
-
   totalIncome?: number;
   totalExpenses?: number;
-
-  // For bank_account, upi_lite, cash
-  currentBalance?: number;
-
-  // Credit-card only
-  creditLimit?: number;
-  billingDay?: number;
-  pendingAmount?: number;
-  lastBillPaidAt?: Date | Timestamp | string;
-
-  // Legacy field — old wallets stored balance here; kept for migration compat
+  // Legacy field — kept for backward compat with old Firestore docs
   amount?: number;
 };

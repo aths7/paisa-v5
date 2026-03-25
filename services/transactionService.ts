@@ -34,82 +34,30 @@ const getUserId = () => {
 };
 
 // ---------------------------------------------------------------------------
-// Wallet-type-aware balance helpers
+// Wallet balance helpers
 // ---------------------------------------------------------------------------
 
-/**
- * Returns wallet updates to apply after a transaction.
- * Credit cards: expense raises pendingAmount; income lowers it (clamped to 0).
- * Others: income raises currentBalance; expense lowers it.
- */
 const applyTxnToWallet = (
   wallet: WalletType,
   type: string,
   amount: number
 ): Partial<WalletType> => {
-  if (wallet.walletType === "credit_card") {
-    const pending = wallet.pendingAmount ?? 0;
-    if (type === "expense") {
-      return {
-        pendingAmount: pending + amount,
-        totalExpenses: (wallet.totalExpenses ?? 0) + amount,
-      };
-    } else {
-      return {
-        pendingAmount: Math.max(pending - amount, 0),
-        totalIncome: (wallet.totalIncome ?? 0) + amount,
-      };
-    }
+  if (type === "income") {
+    return { totalIncome: (wallet.totalIncome ?? 0) + amount };
   } else {
-    const balance = wallet.currentBalance ?? wallet.amount ?? 0;
-    if (type === "income") {
-      return {
-        currentBalance: balance + amount,
-        totalIncome: (wallet.totalIncome ?? 0) + amount,
-      };
-    } else {
-      return {
-        currentBalance: balance - amount,
-        totalExpenses: (wallet.totalExpenses ?? 0) + amount,
-      };
-    }
+    return { totalExpenses: (wallet.totalExpenses ?? 0) + amount };
   }
 };
 
-/**
- * Exact reverse of applyTxnToWallet — used when editing or deleting a transaction.
- */
 const revertTxnFromWallet = (
   wallet: WalletType,
   type: string,
   amount: number
 ): Partial<WalletType> => {
-  if (wallet.walletType === "credit_card") {
-    const pending = wallet.pendingAmount ?? 0;
-    if (type === "expense") {
-      return {
-        pendingAmount: Math.max(pending - amount, 0),
-        totalExpenses: Math.max((wallet.totalExpenses ?? 0) - amount, 0),
-      };
-    } else {
-      return {
-        pendingAmount: pending + amount,
-        totalIncome: Math.max((wallet.totalIncome ?? 0) - amount, 0),
-      };
-    }
+  if (type === "income") {
+    return { totalIncome: Math.max((wallet.totalIncome ?? 0) - amount, 0) };
   } else {
-    const balance = wallet.currentBalance ?? wallet.amount ?? 0;
-    if (type === "income") {
-      return {
-        currentBalance: balance - amount,
-        totalIncome: Math.max((wallet.totalIncome ?? 0) - amount, 0),
-      };
-    } else {
-      return {
-        currentBalance: balance + amount,
-        totalExpenses: Math.max((wallet.totalExpenses ?? 0) - amount, 0),
-      };
-    }
+    return { totalExpenses: Math.max((wallet.totalExpenses ?? 0) - amount, 0) };
   }
 };
 
@@ -187,16 +135,6 @@ export const createOrUpdateTransaction = async (
       if (newWalletId) {
         const res = await updateWalletForNewTransaction(newWalletId, Number(amount), type);
         if (!res.success) return res;
-      }
-    }
-
-    // Stamp walletType on the transaction (plaintext — used for filtering)
-    if (newWalletId) {
-      const walletSnap = await getDoc(
-        doc(firestore, "users", uid, "wallets", newWalletId)
-      );
-      if (walletSnap.exists() && walletSnap.data().walletType) {
-        transactionData.walletType = walletSnap.data().walletType;
       }
     }
 

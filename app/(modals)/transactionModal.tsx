@@ -33,7 +33,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import ImageUpload from "@/components/ImageUpload";
 import { DEFAULT_EXPENSE_CATEGORIES, expenseCategories } from "@/constants/data";
-import { formatIndianNumber } from "@/utils/common";
 import { useAuth } from "@/contexts/authContext";
 import { PurchaseStyle } from "@/types";
 import useDecryptedData from "@/hooks/useDecryptedData";
@@ -382,14 +381,6 @@ const TransactionModal = () => {
             <View style={styles.emotionRow}>
               {wallets.map((wallet) => {
                 const active = transaction.walletId === wallet.id;
-                const balance =
-                  wallet.walletType === "credit_card"
-                    ? wallet.pendingAmount ?? 0
-                    : wallet.currentBalance ?? wallet.amount ?? 0;
-                const suffix =
-                  wallet.walletType === "credit_card"
-                    ? `₹${formatIndianNumber(balance)} due`
-                    : `₹${formatIndianNumber(balance)}`;
                 return (
                   <TouchableOpacity
                     key={wallet.id}
@@ -403,9 +394,6 @@ const TransactionModal = () => {
                   >
                     <Typo size={13} fontWeight="500" color={active ? colors.black : colors.neutral400}>
                       {wallet.name}
-                    </Typo>
-                    <Typo size={11} color={active ? colors.neutral700 : colors.neutral500}>
-                      {suffix}
                     </Typo>
                   </TouchableOpacity>
                 );
