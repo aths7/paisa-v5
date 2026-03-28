@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.aths7.paisav5",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -41,7 +41,15 @@
           }
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#A3E635",
+          "sounds": []
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -6,6 +6,11 @@ import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "fire
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { createContext, useContext, useEffect, useState } from "react";
 import { deriveKey, encryptField, decryptField, isEncrypted } from "@/services/encryptionService";
+import {
+  requestPermissions,
+  rescheduleReminders,
+  refreshMessageBatch,
+} from "@/services/notificationService";
 
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -25,6 +30,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 });
                 updateUserData(firebaseUser.uid);
                 router.replace("/(tabs)");
+
+                // Notifications — non-blocking, best-effort
+                requestPermissions().then((granted) => {
+                    if (granted) {
+                        rescheduleReminders();        // restore/refresh the 9 PM daily trigger
+                        refreshMessageBatch();        // top up AI message batch if running low
+                    }
+                });
             } else {
                 setUser(null);
                 router.replace("/(auth)/welcome");

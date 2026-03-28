@@ -1,6 +1,7 @@
 import { ResponseType, TransactionType, WalletType } from "@/types";
 import { uploadFileToCloudinary } from "./imageService";
 import { updateStreakOnEntry } from "./streakService";
+import { suppressTodayReminder, refreshMessageBatch } from "./notificationService";
 import {
   collection,
   deleteDoc,
@@ -172,6 +173,10 @@ export const createOrUpdateTransaction = async (
     let streak = undefined;
     if (!id) {
       streak = await updateStreakOnEntry(uid);
+      // Suppress today's 9 PM reminder (user has already logged) and
+      // opportunistically top up the AI message batch while in foreground.
+      suppressTodayReminder().catch(() => {});
+      refreshMessageBatch().catch(() => {});
     }
 
     return { success: true, data: { ...transactionData, id: transactionRef.id, streak } };
