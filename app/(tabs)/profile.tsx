@@ -5,11 +5,10 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { BlurView } from "expo-blur";
 import ScreenWrapper from "@/components/ScreenWrapper";
 import Typo from "@/components/Typo";
@@ -17,7 +16,7 @@ import Header from "@/components/Header";
 import { colors, radius, spacingX, spacingY } from "@/constants/theme";
 import { Image } from "expo-image";
 import { useAuth } from "@/contexts/authContext";
-import { scale, verticalScale } from "@/utils/styling";
+import { verticalScale } from "@/utils/styling";
 import * as Icons from "phosphor-react-native";
 import { useRouter } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -26,6 +25,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "@/config/firebase";
 import { getProfileImage } from "@/services/imageService";
 import { prepareTransactionsCSV, shareCSV, ExportRange } from "@/services/exportService";
+import PaisaLoader from "@/components/PaisaLoader";
 
 const EXPORT_OPTIONS: { label: string; range: ExportRange }[] = [
   { label: "This Month", range: "this_month" },
@@ -38,18 +38,19 @@ const EXPORT_OPTIONS: { label: string; range: ExportRange }[] = [
 const Profile = () => {
   const { user } = useAuth();
   const router = useRouter();
-  const [exporting, setExporting] = useState(false);
+  // exportLocked: ref-based guard that stays true through the entire prepare+share flow.
+  // showExportOverlay: state that controls the visible overlay (dismissed before shareAsync).
+  const exportLocked = useRef(false);
+  const [showExportOverlay, setShowExportOverlay] = useState(false);
   const [showExportSheet, setShowExportSheet] = useState(false);
 
   const runExport = async (range: ExportRange) => {
-    setShowExportSheet(false);
-    if (!user?.uid) return;
-    setExporting(true);
+    if (!user?.uid || exportLocked.current) return;
+    exportLocked.current = true;
+    setShowExportOverlay(true);
     try {
-      // Prepare the file while overlay is visible
       const fileUri = await prepareTransactionsCSV(user.uid, range);
-      // Dismiss overlay and wait for native layout to settle before presenting share sheet
-      setExporting(false);
+      setShowExportOverlay(false);
       await new Promise<void>(resolve => InteractionManager.runAfterInteractions(() => resolve()));
       try {
         await shareCSV(fileUri);
@@ -58,9 +59,11 @@ const Profile = () => {
         Alert.alert("Share Failed", shareErr?.message || JSON.stringify(shareErr));
       }
     } catch (e: any) {
-      setExporting(false);
+      setShowExportOverlay(false);
       console.log("[export] prepareCSV error:", e);
       Alert.alert("Export Failed", e?.message || "Something went wrong.");
+    } finally {
+      exportLocked.current = false;
     }
   };
 
@@ -119,7 +122,7 @@ const Profile = () => {
   };
 
   const handlePress = async (item: accountOptionType) => {
-    if (exporting) return;
+    if (exportLocked.current) return;
     if (item?.title === "Logout") { showLogoutAlert(); return; }
     if (item?.title === "Export Transactions") { setShowExportSheet(true); return; }
     if (item?.routeName) router.push(item?.routeName);
@@ -162,11 +165,7 @@ const Profile = () => {
                     {item.icon && item.icon}
                   </View>
                   <Typo size={16} style={{ flex: 1 }} fontWeight={"500"}>{item.title}</Typo>
-                  {item.title === "Export Transactions" && exporting ? (
-                    <Icons.CircleNotch size={verticalScale(20)} color={colors.neutral400} weight="bold" />
-                  ) : (
-                    <Icons.CaretRight size={verticalScale(20)} weight="bold" color={colors.white} />
-                  )}
+                  <Icons.CaretRight size={verticalScale(20)} weight="bold" color={colors.white} />
                 </TouchableOpacity>
               </Animated.View>
             ))}
@@ -174,19 +173,25 @@ const Profile = () => {
         </ScrollView>
       </View>
 
-      {/* Blocks all interaction + tab navigation while export is running */}
-      {exporting && (
-        <View style={styles.exportingOverlay} pointerEvents="box-only">
-          <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
-          <Icons.CircleNotch size={scale(32)} color={colors.primary} weight="bold" />
-          <Typo size={14} color={colors.neutral300} style={{ marginTop: spacingY._10 }}>
-            Exporting…
-          </Typo>
-        </View>
-      )}
+      {/* Always rendered so Reanimated animations stay alive; visibility toggled via opacity + pointerEvents */}
+      <View
+        style={[styles.exportingOverlay, { opacity: showExportOverlay ? 1 : 0 }]}
+        pointerEvents={showExportOverlay ? "box-only" : "none"}
+      >
+        <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+        <PaisaLoader size={80} />
+        <Typo size={14} color={colors.neutral300} style={{ marginTop: spacingY._10 }}>
+          Exporting…
+        </Typo>
+      </View>
 
       {/* Export range picker */}
-      <Modal visible={showExportSheet} transparent animationType="fade" onRequestClose={() => setShowExportSheet(false)}>
+      <Modal
+        visible={showExportSheet}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowExportSheet(false)}
+      >
         <BlurView intensity={40} tint="dark" style={styles.blurFill}>
           <Pressable style={styles.blurFill} onPress={() => setShowExportSheet(false)} />
           <View style={styles.sheet}>
@@ -197,7 +202,13 @@ const Profile = () => {
               <TouchableOpacity
                 key={opt.range}
                 style={[styles.sheetRow, i < EXPORT_OPTIONS.length - 1 && styles.sheetRowBorder]}
-                onPress={() => runExport(opt.range)}
+                onPress={() => {
+                  if (exportLocked.current) return;
+                  setShowExportSheet(false);
+                  setTimeout(() => {
+                    runExport(opt.range);
+                  }, 250);
+                }}
               >
                 <Typo size={16} color={colors.white}>{opt.label}</Typo>
               </TouchableOpacity>
