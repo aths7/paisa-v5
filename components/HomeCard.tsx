@@ -8,9 +8,11 @@ import Typo from "./Typo";
 type HomeCardProps = {
   monthlySpend?: number;
   monthLabel?: string;
+  todaySpend?: number;
+  last7DaysSpend?: number;
 };
 
-const HomeCard = ({ monthlySpend = 0, monthLabel }: HomeCardProps) => {
+const HomeCard = ({ monthlySpend = 0, monthLabel, todaySpend = 0, last7DaysSpend = 0 }: HomeCardProps) => {
   return (
     <View style={styles.card}>
       <Typo size={13} color={colors.neutral400} fontWeight="500">
@@ -20,6 +22,24 @@ const HomeCard = ({ monthlySpend = 0, monthLabel }: HomeCardProps) => {
         {formatRupees(monthlySpend)}
       </Typo>
 
+      {/* Divider */}
+      <View style={styles.divider} />
+
+      {/* Today + Last 7 Days */}
+      <View style={styles.subRow}>
+        <View style={styles.subItem}>
+          <Typo size={11} color={colors.neutral500} fontWeight="500">Today</Typo>
+          <Typo size={15} fontWeight="600" color={colors.neutral200}>
+            {formatRupees(todaySpend)}
+          </Typo>
+        </View>
+        <View style={[styles.subItem, styles.subItemRight]}>
+          <Typo size={11} color={colors.neutral500} fontWeight="500">Last 7 Days</Typo>
+          <Typo size={15} fontWeight="600" color={colors.neutral200}>
+            {formatRupees(last7DaysSpend)}
+          </Typo>
+        </View>
+      </View>
     </View>
   );
 };
@@ -34,5 +54,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacingX._20,
     paddingVertical: spacingY._25,
     gap: verticalScale(2),
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.neutral800,
+    marginTop: verticalScale(14),
+    marginBottom: verticalScale(10),
+  },
+  subRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  subItem: {
+    gap: verticalScale(2),
+  },
+  subItemRight: {
+    alignItems: "flex-end",
   },
 });

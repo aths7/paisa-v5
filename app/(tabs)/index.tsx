@@ -162,6 +162,37 @@ const Home = () => {
       .reduce((sum, t) => sum + Number(t.amount), 0);
   }, [monthlyTransactions]);
 
+  const toDate = (raw: any): Date => {
+    if (raw instanceof Timestamp) return raw.toDate();
+    if (raw instanceof Date) return raw;
+    return new Date(raw as string);
+  };
+
+  const todaySpend = useMemo(() => {
+    const today = new Date();
+    return allTransactions
+      .filter((t) => {
+        if (t.type !== "expense" || t.transactionSource === "credit_card_bill_payment") return false;
+        const d = toDate(t.date);
+        return d.getFullYear() === today.getFullYear() &&
+          d.getMonth() === today.getMonth() &&
+          d.getDate() === today.getDate();
+      })
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+  }, [allTransactions]);
+
+  const last7DaysSpend = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 6);
+    cutoff.setHours(0, 0, 0, 0);
+    return allTransactions
+      .filter((t) => {
+        if (t.type !== "expense" || t.transactionSource === "credit_card_bill_payment") return false;
+        return toDate(t.date) >= cutoff;
+      })
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+  }, [allTransactions]);
+
   const hasWallets = !walletsLoading && wallets.length > 0;
   const hasTransactions = !transactionsLoading && allTransactions.length > 0;
   const showSetupCard =
@@ -252,6 +283,8 @@ const Home = () => {
             <HomeCard
               monthlySpend={monthlySpend}
               monthLabel={selectedMonth.label}
+              todaySpend={todaySpend}
+              last7DaysSpend={last7DaysSpend}
             />
           </View>
 
