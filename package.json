@@ -22,6 +22,7 @@
     "axios": "^1.13.2",
     "crypto-js": "^4.2.0",
     "expo": "~54.0.31",
+    "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.13",
     "expo-crypto": "~15.0.8",
     "expo-dev-client": "~6.0.20",
