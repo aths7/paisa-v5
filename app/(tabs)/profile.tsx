@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import React from "react";
+import React, { useState } from "react";
 import ScreenWrapper from "@/components/ScreenWrapper";
 import Typo from "@/components/Typo";
 import Header from "@/components/Header";
@@ -21,10 +21,24 @@ import { accountOptionType } from "@/types";
 import { signOut } from "firebase/auth";
 import { auth } from "@/config/firebase";
 import { getProfileImage } from "@/services/imageService";
+import { exportTransactionsCSV } from "@/services/exportService";
 
 const Profile = () => {
   const { user } = useAuth();
   const router = useRouter();
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async () => {
+    if (!user?.uid) return;
+    setExporting(true);
+    try {
+      await exportTransactionsCSV(user.uid);
+    } catch (e: any) {
+      Alert.alert("Export Failed", e?.message || "Something went wrong.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const accountOptions: accountOptionType[] = [
     {
@@ -76,6 +90,17 @@ const Profile = () => {
       bgColor: "#059669",
     },
     {
+      title: "Export Transactions",
+      icon: (
+        <Icons.Export
+          size={verticalScale(26)}
+          color={colors.white}
+          weight="fill"
+        />
+      ),
+      bgColor: "#0891b2",
+    },
+    {
       title: "Privacy Policy",
       icon: (
         <Icons.Lock
@@ -121,8 +146,13 @@ const Profile = () => {
   };
 
   const handlePress = async (item: accountOptionType) => {
-    if (item?.title == "Logout") {
+    if (item?.title === "Logout") {
       showLogoutAlert();
+      return;
+    }
+    if (item?.title === "Export Transactions") {
+      handleExport();
+      return;
     }
     if (item?.routeName) router.push(item?.routeName);
   };
@@ -187,11 +217,19 @@ const Profile = () => {
                   <Typo size={16} style={{ flex: 1 }} fontWeight={"500"}>
                     {item.title}
                   </Typo>
-                  <Icons.CaretRight
-                    size={verticalScale(20)}
-                    weight="bold"
-                    color={colors.white}
-                  />
+                  {item.title === "Export Transactions" && exporting ? (
+                    <Icons.CircleNotch
+                      size={verticalScale(20)}
+                      color={colors.neutral400}
+                      weight="bold"
+                    />
+                  ) : (
+                    <Icons.CaretRight
+                      size={verticalScale(20)}
+                      weight="bold"
+                      color={colors.white}
+                    />
+                  )}
                 </TouchableOpacity>
               </Animated.View>
             );
