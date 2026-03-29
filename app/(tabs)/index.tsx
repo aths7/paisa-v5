@@ -454,7 +454,7 @@ const styles = StyleSheet.create({
   scrollViewStyle: {
     marginTop: spacingY._10,
     paddingBottom: verticalScale(100),
-    gap: spacingY._25,
+    gap: spacingY._15,
   },
   setupCard: {
     backgroundColor: colors.neutral800,

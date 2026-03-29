@@ -18,7 +18,7 @@ const HomeCard = ({ monthlySpend = 0, monthLabel, todaySpend = 0, last7DaysSpend
       <Typo size={13} color={colors.neutral400} fontWeight="500">
         {"Spends For"} {monthLabel ?? "This Month"}
       </Typo>
-      <Typo size={42} fontWeight="700" color={colors.white}>
+      <Typo size={38} fontWeight="700" color={colors.white}>
         {formatRupees(monthlySpend)}
       </Typo>
 
@@ -52,14 +52,15 @@ const styles = StyleSheet.create({
     borderRadius: radius._20,
     borderCurve: "continuous",
     paddingHorizontal: spacingX._20,
-    paddingVertical: spacingY._25,
+    paddingTop: spacingY._17,
+    paddingBottom: spacingY._15,
     gap: verticalScale(2),
   },
   divider: {
     height: 1,
     backgroundColor: colors.neutral800,
-    marginTop: verticalScale(14),
-    marginBottom: verticalScale(10),
+    marginTop: verticalScale(10),
+    marginBottom: verticalScale(8),
   },
   subRow: {
     flexDirection: "row",

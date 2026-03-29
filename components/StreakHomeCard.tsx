@@ -16,39 +16,27 @@ const StreakHomeCard = ({ currentStreak, onPress }: Props) => {
 
   const hint =
     currentStreak === 0
-      ? "Log a transaction to start your streak"
+      ? "Log a transaction to start"
       : next
-      ? `${next.days - currentStreak} day${next.days - currentStreak !== 1 ? "s" : ""} to ${next.label}`
-      : "All milestones unlocked! 🏆";
+      ? `${next.days - currentStreak}d to ${next.label}`
+      : "All milestones unlocked 🏆";
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.row}>
-        {/* Left — streak info */}
-        <View style={styles.left}>
-          <View style={styles.labelRow}>
-            <Icons.Fire size={scale(16)} color="#f97316" weight="fill" />
-            <Typo size={13} color={colors.neutral400} style={{ marginLeft: scale(5) }}>
-              Streak
-            </Typo>
-          </View>
-          <View style={styles.countRow}>
-            <Typo size={34} fontWeight="800" color={colors.primary} style={styles.count}>
-              {currentStreak}
-            </Typo>
-            <Typo size={14} color={colors.neutral400} style={styles.daysLabel}>
-              {" "}days
-            </Typo>
-          </View>
-        </View>
-
-        {/* Right — arrow */}
-        <Icons.ArrowRight size={scale(20)} color={colors.neutral600} />
+      {/* Left: fire + count */}
+      <View style={styles.left}>
+        <Icons.Fire size={scale(15)} color="#f97316" weight="fill" />
+        <Typo size={15} fontWeight="700" color={colors.primary}>{currentStreak}</Typo>
+        <Typo size={13} color={colors.neutral400}>day streak</Typo>
       </View>
 
-      <Typo size={12} color={colors.neutral500} style={styles.hint}>
+      {/* Middle: hint */}
+      <Typo size={12} color={colors.neutral500} style={styles.hint} numberOfLines={1}>
         {hint}
       </Typo>
+
+      {/* Right: arrow */}
+      <Icons.ArrowRight size={scale(16)} color={colors.neutral600} />
     </TouchableOpacity>
   );
 };
@@ -58,37 +46,21 @@ export default StreakHomeCard;
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.neutral800,
-    borderRadius: radius._20,
+    borderRadius: radius._15,
     borderWidth: 1,
     borderColor: colors.neutral700,
-    paddingHorizontal: spacingX._20,
-    paddingVertical: spacingY._15,
-    gap: verticalScale(4),
-  },
-  row: {
+    paddingHorizontal: spacingX._15,
+    paddingVertical: spacingY._12,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: scale(8),
   },
   left: {
-    gap: verticalScale(2),
-  },
-  labelRow: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  countRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-  },
-  count: {
-    lineHeight: verticalScale(40),
-    letterSpacing: -0.5,
-  },
-  daysLabel: {
-    lineHeight: verticalScale(40),
+    gap: scale(4),
   },
   hint: {
-    marginTop: verticalScale(2),
+    flex: 1,
   },
 });
