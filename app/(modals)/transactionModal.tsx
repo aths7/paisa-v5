@@ -21,6 +21,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   TouchableOpacity,
   View
 } from "react-native";
@@ -43,6 +44,8 @@ import {
   createOrUpdateTransaction,
   deleteTransaction,
 } from "@/services/transactionService";
+import { updateExpenseCategories, updateEmotionTags } from "@/services/userService";
+import { createOrUpdateWallet } from "@/services/walletService";
 import { TransactionType, WalletType } from "@/types";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { orderBy } from "firebase/firestore";
@@ -200,7 +203,7 @@ const amtStyles = StyleSheet.create({
 
 // ─── Main modal ───────────────────────────────────────────────────────────────
 const TransactionModal = () => {
-  const { user } = useAuth();
+  const { user, updateUserData } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const footerBottom = useRef(new Animated.Value(0)).current;
@@ -265,6 +268,15 @@ const TransactionModal = () => {
   const [loading, setLoading] = useState(false);
   const [amountStr, setAmountStr] = useState("");
   const [showConfetti, setShowConfetti] = useState(false);
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategoryText, setNewCategoryText] = useState("");
+  const [savingCategory, setSavingCategory] = useState(false);
+  const [addingEmotion, setAddingEmotion] = useState(false);
+  const [newEmotionText, setNewEmotionText] = useState("");
+  const [savingEmotion, setSavingEmotion] = useState(false);
+  const [addingWallet, setAddingWallet] = useState(false);
+  const [newWalletText, setNewWalletText] = useState("");
+  const [savingWallet, setSavingWallet] = useState(false);
   const isEdit = Boolean(oldTransaction?.id);
 
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -340,6 +352,57 @@ const TransactionModal = () => {
       setTransaction((t) => ({ ...t, amount: parseFloat(next) || 0 }));
       return next;
     });
+  };
+
+  const handleAddEmotion = async () => {
+    const tag = newEmotionText.trim().toLowerCase().replace(/\s+/g, "_");
+    if (!tag || !user?.uid) return;
+    const currentTags = user?.emotionTags?.length ? user.emotionTags : DEFAULT_EMOTION_TAGS;
+    if (currentTags.includes(tag)) {
+      Alert.alert("Emotion", "This emotion already exists.");
+      return;
+    }
+    const updated = [...currentTags, tag];
+    setSavingEmotion(true);
+    await updateEmotionTags(user.uid, updated);
+    await updateUserData(user.uid);
+    setSavingEmotion(false);
+    setNewEmotionText("");
+    setAddingEmotion(false);
+    setTransaction((t) => ({ ...t, emotion: tag }));
+  };
+
+  const handleAddWallet = async () => {
+    const name = newWalletText.trim();
+    if (!name || !user?.uid) return;
+    setSavingWallet(true);
+    const res = await createOrUpdateWallet({ name, amount: 0 });
+    setSavingWallet(false);
+    if (res.success) {
+      setNewWalletText("");
+      setAddingWallet(false);
+      if (res.data?.id) setTransaction((t) => ({ ...t, walletId: res.data.id }));
+    } else {
+      Alert.alert("Wallet", res.msg || "Failed to create wallet.");
+    }
+  };
+
+  const handleAddCategory = async () => {
+    const tag = newCategoryText.trim().toLowerCase().replace(/\s+/g, "_");
+    if (!tag || !user?.uid) return;
+    const currentKeys = user?.expenseCategories?.length ? user.expenseCategories : DEFAULT_EXPENSE_CATEGORIES;
+    if (currentKeys.includes(tag)) {
+      Alert.alert("Category", "This category already exists.");
+      return;
+    }
+    const updated = [...currentKeys, tag];
+    setSavingCategory(true);
+    await updateExpenseCategories(user.uid, updated);
+    await updateUserData(user.uid);
+    setSavingCategory(false);
+    setNewCategoryText("");
+    setAddingCategory(false);
+    setTransaction((t) => ({ ...t, category: tag }));
   };
 
   const onDateChange = (event: any, selectedDate: any) => {
@@ -538,7 +601,47 @@ const TransactionModal = () => {
                   </TouchableOpacity>
                 );
               })}
+
+              {!addingEmotion && (
+                <TouchableOpacity
+                  style={styles.emotionPill}
+                  onPress={() => setAddingEmotion(true)}
+                >
+                  <Icons.Plus size={scale(13)} color={colors.neutral400} weight="bold" />
+                </TouchableOpacity>
+              )}
             </View>
+
+            {addingEmotion && (
+              <View style={styles.addCategoryRow}>
+                <TextInput
+                  style={styles.addCategoryInput}
+                  placeholder="Emotion name…"
+                  placeholderTextColor={colors.neutral500}
+                  value={newEmotionText}
+                  onChangeText={setNewEmotionText}
+                  autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={handleAddEmotion}
+                />
+                <TouchableOpacity
+                  style={[styles.addCategoryConfirm, savingEmotion && { opacity: 0.5 }]}
+                  onPress={handleAddEmotion}
+                  disabled={savingEmotion}
+                >
+                  {savingEmotion
+                    ? <Icons.CircleNotch size={scale(16)} color={colors.black} weight="bold" />
+                    : <Icons.Check size={scale(16)} color={colors.black} weight="bold" />
+                  }
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.addCategoryCancel}
+                  onPress={() => { setAddingEmotion(false); setNewEmotionText(""); }}
+                >
+                  <Icons.X size={scale(16)} color={colors.neutral400} weight="bold" />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           {/* category — expense only */}
@@ -564,7 +667,50 @@ const TransactionModal = () => {
                     </TouchableOpacity>
                   );
                 })}
+
+                {/* Add category pill */}
+                {!addingCategory && (
+                  <TouchableOpacity
+                    style={styles.addCategoryPill}
+                    onPress={() => setAddingCategory(true)}
+                  >
+                    <Icons.Plus size={scale(13)} color={colors.neutral400} weight="bold" />
+                    <Typo size={12} fontWeight="500" color={colors.neutral400}>New</Typo>
+                  </TouchableOpacity>
+                )}
               </View>
+
+              {/* Inline add input */}
+              {addingCategory && (
+                <View style={styles.addCategoryRow}>
+                  <TextInput
+                    style={styles.addCategoryInput}
+                    placeholder="Category name…"
+                    placeholderTextColor={colors.neutral500}
+                    value={newCategoryText}
+                    onChangeText={setNewCategoryText}
+                    autoFocus
+                    returnKeyType="done"
+                    onSubmitEditing={handleAddCategory}
+                  />
+                  <TouchableOpacity
+                    style={[styles.addCategoryConfirm, savingCategory && { opacity: 0.5 }]}
+                    onPress={handleAddCategory}
+                    disabled={savingCategory}
+                  >
+                    {savingCategory
+                      ? <Icons.CircleNotch size={scale(16)} color={colors.black} weight="bold" />
+                      : <Icons.Check size={scale(16)} color={colors.black} weight="bold" />
+                    }
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.addCategoryCancel}
+                    onPress={() => { setAddingCategory(false); setNewCategoryText(""); }}
+                  >
+                    <Icons.X size={scale(16)} color={colors.neutral400} weight="bold" />
+                  </TouchableOpacity>
+                </View>
+              )}
             </CollapsibleSection>
           )}
 
@@ -590,7 +736,48 @@ const TransactionModal = () => {
                   </TouchableOpacity>
                 );
               })}
+
+              {!addingWallet && (
+                <TouchableOpacity
+                  style={[styles.walletPill, { flexDirection: "row", gap: scale(4) }]}
+                  onPress={() => setAddingWallet(true)}
+                >
+                  <Icons.Plus size={scale(13)} color={colors.neutral400} weight="bold" />
+                  <Typo size={13} fontWeight="500" color={colors.neutral400}>New</Typo>
+                </TouchableOpacity>
+              )}
             </View>
+
+            {addingWallet && (
+              <View style={styles.addCategoryRow}>
+                <TextInput
+                  style={styles.addCategoryInput}
+                  placeholder="Wallet name…"
+                  placeholderTextColor={colors.neutral500}
+                  value={newWalletText}
+                  onChangeText={setNewWalletText}
+                  autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={handleAddWallet}
+                />
+                <TouchableOpacity
+                  style={[styles.addCategoryConfirm, savingWallet && { opacity: 0.5 }]}
+                  onPress={handleAddWallet}
+                  disabled={savingWallet}
+                >
+                  {savingWallet
+                    ? <Icons.CircleNotch size={scale(16)} color={colors.black} weight="bold" />
+                    : <Icons.Check size={scale(16)} color={colors.black} weight="bold" />
+                  }
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.addCategoryCancel}
+                  onPress={() => { setAddingWallet(false); setNewWalletText(""); }}
+                >
+                  <Icons.X size={scale(16)} color={colors.neutral400} weight="bold" />
+                </TouchableOpacity>
+              </View>
+            )}
           </CollapsibleSection>
 
           {/* description */}
@@ -822,6 +1009,56 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     backgroundColor: colors.neutral800,
     alignItems: "center",
+  },
+  addCategoryPill: {
+    width: categoryPillW,
+    paddingVertical: verticalScale(10),
+    paddingHorizontal: scale(6),
+    borderWidth: 1,
+    borderColor: colors.neutral700,
+    borderRadius: radius._15,
+    borderCurve: "continuous",
+    backgroundColor: "transparent",
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: scale(4),
+  },
+  addCategoryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(8),
+    marginTop: verticalScale(8),
+  },
+  addCategoryInput: {
+    flex: 1,
+    height: verticalScale(40),
+    borderWidth: 1,
+    borderColor: colors.neutral600,
+    borderRadius: radius._10,
+    borderCurve: "continuous",
+    paddingHorizontal: spacingX._12,
+    color: colors.white,
+    fontSize: scale(14),
+    backgroundColor: colors.neutral800,
+  },
+  addCategoryConfirm: {
+    width: verticalScale(40),
+    height: verticalScale(40),
+    backgroundColor: colors.primary,
+    borderRadius: radius._10,
+    borderCurve: "continuous",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  addCategoryCancel: {
+    width: verticalScale(40),
+    height: verticalScale(40),
+    backgroundColor: colors.neutral700,
+    borderRadius: radius._10,
+    borderCurve: "continuous",
+    alignItems: "center",
+    justifyContent: "center",
   },
   walletPill: {
     width: walletPillW,
