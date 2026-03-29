@@ -25,7 +25,7 @@ import {
   View
 } from "react-native";
 
-const { width: SCREEN_W } = Dimensions.get("window");
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const FORM_H_PAD = scale(20) * 2;
 const PILL_GAP = scale(8);
 const emotionPillW = (SCREEN_W - FORM_H_PAD - PILL_GAP * 3) / 4; // 4 columns
@@ -47,11 +47,165 @@ import { TransactionType, WalletType } from "@/types";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { orderBy } from "firebase/firestore";
 
+// ─── Numpad key layout ────────────────────────────────────────────────────────
+const NUMPAD_KEYS = [
+  ["1", "2", "3"],
+  ["4", "5", "6"],
+  ["7", "8", "9"],
+  [".", "0", "⌫"],
+];
+
+const KEY_GAP = scale(12);
+const KEY_COLS = 3;
+const KEY_W = (SCREEN_W - FORM_H_PAD - KEY_GAP * (KEY_COLS - 1)) / KEY_COLS;
+const KEY_H = verticalScale(64);
+
+// ─── Step 1: Amount entry ─────────────────────────────────────────────────────
+interface AmountStepProps {
+  amountStr: string;
+  onKey: (key: string) => void;
+  onContinue: () => void;
+  onClose: () => void;
+  insets: { bottom: number; top: number };
+}
+
+const formatAmountDisplay = (str: string): string => {
+  if (!str) return "0";
+  const [intPart, decPart] = str.split(".");
+  const formatted = parseInt(intPart || "0", 10).toLocaleString("en-IN");
+  return decPart !== undefined ? `${formatted}.${decPart}` : formatted;
+};
+
+const AmountStep = ({ amountStr, onKey, onContinue, onClose, insets }: AmountStepProps) => {
+  const display = formatAmountDisplay(amountStr);
+  const isEmpty = !amountStr;
+
+  // Shrink font as number grows
+  const fontSize = display.length > 10 ? scale(36) : display.length > 7 ? scale(44) : scale(56);
+
+  return (
+    <View style={[amtStyles.root, { paddingTop: insets.top + verticalScale(12), paddingBottom: insets.bottom + verticalScale(12) }]}>
+      {/* Close button */}
+      <TouchableOpacity style={amtStyles.closeBtn} onPress={onClose} hitSlop={16}>
+        <Icons.X size={scale(24)} color={colors.neutral200} weight="bold" />
+      </TouchableOpacity>
+
+      {/* Amount display */}
+      <View style={amtStyles.amountArea}>
+        <View style={amtStyles.amountRow}>
+          <Typo
+            size={fontSize * 0.48}
+            fontWeight="300"
+            color={isEmpty ? colors.neutral700 : colors.neutral400}
+          >
+            ₹
+          </Typo>
+          <Typo
+            size={fontSize}
+            fontWeight="300"
+            color={isEmpty ? colors.neutral700 : colors.white}
+            style={{ letterSpacing: -1 }}
+          >
+            {display}
+          </Typo>
+        </View>
+      </View>
+
+      {/* Numpad */}
+      <View style={amtStyles.numpad}>
+        {NUMPAD_KEYS.map((row, ri) => (
+          <View key={ri} style={amtStyles.numpadRow}>
+            {row.map((key) => (
+              <TouchableOpacity
+                key={key}
+                style={amtStyles.key}
+                onPress={() => onKey(key)}
+                activeOpacity={0.6}
+              >
+                {key === "⌫" ? (
+                  <Icons.Backspace size={scale(26)} color={colors.neutral200} weight="regular" />
+                ) : (
+                  <Typo size={scale(28)} fontWeight="300" color={colors.white}>
+                    {key}
+                  </Typo>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        ))}
+      </View>
+
+      {/* Continue button */}
+      <View style={[amtStyles.continueWrapper, { paddingHorizontal: spacingX._20 }]}>
+        <Button
+          onPress={onContinue}
+          disabled={isEmpty}
+          style={[amtStyles.continueBtn, isEmpty && { opacity: 0.4 }]}
+        >
+          <Typo color={colors.black} size={18} fontWeight="700">
+            Continue
+          </Typo>
+        </Button>
+      </View>
+    </View>
+  );
+};
+
+const amtStyles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: colors.black,
+  },
+  closeBtn: {
+    alignSelf: "flex-end",
+    marginRight: spacingX._20,
+    marginTop: verticalScale(8),
+    padding: scale(4),
+  },
+  amountArea: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  amountRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: scale(4),
+  },
+  numpad: {
+    gap: KEY_GAP,
+    paddingHorizontal: spacingX._20,
+    paddingBottom: verticalScale(8),
+  },
+  numpadRow: {
+    flexDirection: "row",
+    gap: KEY_GAP,
+  },
+  key: {
+    width: KEY_W,
+    height: KEY_H,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radius._15,
+    borderCurve: "continuous",
+  },
+  continueWrapper: {
+    paddingTop: verticalScale(12),
+    paddingBottom: verticalScale(4),
+  },
+  continueBtn: {
+    width: "100%",
+  },
+});
+
+// ─── Main modal ───────────────────────────────────────────────────────────────
 const TransactionModal = () => {
   const { user } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const footerBottom = useRef(new Animated.Value(0)).current;
+
+  const [step, setStep] = useState<1 | 2>(1);
 
   useEffect(() => {
     const show = Keyboard.addListener(
@@ -79,6 +233,7 @@ const TransactionModal = () => {
       hide.remove();
     };
   }, []);
+
   type paramType = {
     id: string;
     type: string;
@@ -93,7 +248,6 @@ const TransactionModal = () => {
     emotion?: string;
   };
   const oldTransaction: paramType = useLocalSearchParams();
-  // console.log("old transaction: ", oldTransaction);
 
   const normalizeOptionalParam = (value?: string) => {
     if (!value || value === "undefined" || value === "null") return "";
@@ -157,14 +311,44 @@ const TransactionModal = () => {
     }
   }, []);
 
+  // ── Numpad key handler ────────────────────────────────────────────────────
+  const handleKey = (key: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    setAmountStr((prev) => {
+      if (key === "⌫") {
+        const next = prev.slice(0, -1);
+        setTransaction((t) => ({ ...t, amount: parseFloat(next) || 0 }));
+        return next;
+      }
+      if (key === ".") {
+        if (prev.includes(".")) return prev; // only one decimal
+        const next = prev === "" ? "0." : prev + ".";
+        setTransaction((t) => ({ ...t, amount: parseFloat(next) || 0 }));
+        return next;
+      }
+      // digit
+      if (prev === "0") {
+        // replace leading zero
+        setTransaction((t) => ({ ...t, amount: parseFloat(key) || 0 }));
+        return key;
+      }
+      // guard: max 2 decimal places
+      const dotIdx = prev.indexOf(".");
+      if (dotIdx !== -1 && prev.length - dotIdx > 2) return prev;
+      const next = prev + key;
+      setTransaction((t) => ({ ...t, amount: parseFloat(next) || 0 }));
+      return next;
+    });
+  };
+
   const onDateChange = (event: any, selectedDate: any) => {
     const currentDate = selectedDate || transaction.date;
-    setTransaction({ ...transaction, date: currentDate }); // Update the date state
-    setShowDatePicker(Platform.OS == "android" ? false : true); // will be false on android, but will stay open on ios
+    setTransaction({ ...transaction, date: currentDate });
+    setShowDatePicker(Platform.OS == "android" ? false : true);
   };
 
   const onSelectImage = (file: any) => {
-    // console.log("file: ", file);
     if (file) setTransaction({ ...transaction, image: file });
   };
 
@@ -179,20 +363,6 @@ const TransactionModal = () => {
       Alert.alert("Transaction", "Please fill all the fields");
       return;
     }
-
-    // if (type == "expense") {
-    //   let selectedWallet = wallets.find((wallet) => wallet.id == walletId);
-    //   if (selectedWallet) {
-    //     let remainingBalance = selectedWallet.amount! - amount;
-    //     if (remainingBalance < 0) {
-    //       Alert.alert(
-    //         "Not Enough Balance",
-    //         "The selected wallet don't have enough balance"
-    //       );
-    //       return;
-    //     }
-    //   }
-    // }
 
     let transactionData: TransactionType = {
       type,
@@ -215,13 +385,11 @@ const TransactionModal = () => {
     setLoading(false);
     if (res.success) {
       if (!isEdit) {
-        // Always fire haptic + confetti for new transactions
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setShowConfetti(true);
 
         const streakResult = res.data?.streak;
         if (streakResult?.isFirstToday) {
-          // First entry today — navigate to celebration modal after brief confetti start
           setTimeout(() => {
             router.replace({
               pathname: "/(modals)/streakCelebrationModal",
@@ -260,7 +428,6 @@ const TransactionModal = () => {
   };
 
   const onDeleteTransaction = async () => {
-    console.log("deleting the tr: ", oldTransaction);
     if (oldTransaction) {
       setLoading(true);
       let res = await deleteTransaction(
@@ -276,14 +443,26 @@ const TransactionModal = () => {
     }
   };
 
-  // console.log("got item: ", transaction.type);
+  // ── Step 1: amount numpad ────────────────────────────────────────────────
+  if (step === 1) {
+    return (
+      <AmountStep
+        amountStr={amountStr}
+        onKey={handleKey}
+        onContinue={() => setStep(2)}
+        onClose={() => router.back()}
+        insets={insets}
+      />
+    );
+  }
 
+  // ── Step 2: rest of the form ─────────────────────────────────────────────
   return (
     <ModalWrapper>
       <View style={styles.container}>
         <Header
           title={oldTransaction?.id ? "Update Transaction" : "Add Transaction"}
-          leftIcon={<BackButton />}
+          leftIcon={<BackButton onPress={() => setStep(1)} />}
           style={{ marginBottom: spacingY._10 }}
         />
 
@@ -294,6 +473,14 @@ const TransactionModal = () => {
           keyboardShouldPersistTaps="handled"
           automaticallyAdjustKeyboardInsets
         >
+          {/* amount summary (read-only, tappable to go back) */}
+          <TouchableOpacity style={styles.amountSummary} onPress={() => setStep(1)}>
+            <Typo color={colors.neutral400} size={14} fontWeight="500">Amount</Typo>
+            <Typo color={colors.white} size={28} fontWeight="300">
+              ₹{amountStr || "0"}
+            </Typo>
+          </TouchableOpacity>
+
           {/* purchase style — expense only */}
           {transaction.type === "expense" && (
             <View style={styles.inputContainer}>
@@ -352,24 +539,6 @@ const TransactionModal = () => {
                 );
               })}
             </View>
-          </View>
-
-          {/* amount */}
-          <View style={styles.inputContainer}>
-            <Typo color={colors.neutral200} size={16}>
-              Amount
-            </Typo>
-            <Input
-              keyboardType="decimal-pad"
-              value={amountStr}
-              onChangeText={(value) => {
-                const cleaned = value
-                  .replace(/[^0-9.]/g, "")
-                  .replace(/(\..*)\./g, "$1");
-                setAmountStr(cleaned);
-                setTransaction({ ...transaction, amount: parseFloat(cleaned) || 0 });
-              }}
-            />
           </View>
 
           {/* category — expense only */}
@@ -548,7 +717,7 @@ const TransactionModal = () => {
         </Button>
       </Animated.View>
 
-      {/* Confetti — rendered last so it appears above all content */}
+      {/* Confetti */}
       {showConfetti && (
         <ConfettiCannon
           count={120}
@@ -595,6 +764,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacingX._5,
   },
+  amountSummary: {
+    borderWidth: 1,
+    borderColor: colors.neutral700,
+    borderRadius: radius._15,
+    borderCurve: "continuous",
+    paddingHorizontal: spacingX._20,
+    paddingVertical: spacingY._12,
+    backgroundColor: colors.neutral800,
+    gap: spacingY._5,
+  },
   dateInput: {
     flexDirection: "row",
     height: verticalScale(54),
@@ -605,10 +784,7 @@ const styles = StyleSheet.create({
     borderCurve: "continuous",
     paddingHorizontal: spacingX._15,
   },
-
-  iosDatePicker: {
-    // backgroundColor: "red",
-  },
+  iosDatePicker: {},
   datePickerButton: {
     backgroundColor: colors.neutral700,
     alignSelf: "flex-end",

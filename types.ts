@@ -61,6 +61,7 @@ export type HeaderProps = {
 export type BackButtonProps = {
   style?: ViewStyle;
   iconSize?: number;
+  onPress?: () => void;
 };
 
 export type PurchaseStyle = "impulsive" | "non_impulsive";
