@@ -34,6 +34,13 @@ function CustomTabs({ state, descriptors, navigation }: BottomTabBarProps) {
         color={isFocused ? colors.primary : colors.neutral400}
       />
     ),
+    debt: (isFocused) => (
+      <Icons.Receipt
+        size={verticalScale(26)}
+        weight={isFocused ? "fill" : "regular"}
+        color={isFocused ? colors.primary : colors.neutral400}
+      />
+    ),
     profile: (isFocused) => (
       <Icons.User
         size={verticalScale(26)}

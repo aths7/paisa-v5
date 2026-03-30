@@ -64,6 +64,29 @@ export const WALLET_NUMERIC_FIELDS = [
 ] as const;
 export const USER_STRING_FIELDS = ["name"] as const;
 
+export const DEBT_STRING_FIELDS = [
+  "loanName",
+  "lenderName",
+  "status",
+  "calculationSource",
+  "calculationExplanation",
+] as const;
+
+export const DEBT_NUMERIC_FIELDS = [
+  "principalAmount",
+  "enteredInterestRate",
+  "derivedAnnualInterestRate",
+  "derivedMonthlyInterestRate",
+  "durationValue",
+  "durationMonths",
+  "totalCharges",
+  "monthlyEmi",
+  "totalPrincipalPaid",
+  "totalInterestPaid",
+  "totalScheduledPayable",
+  "emiOverrideValue",
+] as const;
+
 // ---------------------------------------------------------------------------
 // Document-level helpers
 // Only touches fields that are present & non-null in the document.

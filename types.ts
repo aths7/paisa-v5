@@ -208,3 +208,74 @@ export type StreakUpdateResult = {
   newStreak: number;
   isFirstToday: boolean; // false = already logged today, suppress modal
 };
+
+// ---------------------------------------------------------------------------
+// Debt Tracker types
+// ---------------------------------------------------------------------------
+
+export type InterestRateFrequency = "per_month" | "per_year";
+export type DebtDurationUnit = "months" | "years";
+export type DebtStatus = "active" | "inactive";
+export type DebtCalculationSource =
+  | "rate_based"
+  | "emi_override_back_calculated";
+
+export type DebtFeeItem = {
+  id: string;
+  name: string;
+  amount: number;
+};
+
+export type DebtClosureSummary = {
+  closedAt: Date | Timestamp | string;
+  closePaymentAmount: number;
+  scheduledTotalPayable: number;
+  difference: number;
+};
+
+export type DebtType = {
+  id?: string;
+  uid?: string;
+
+  loanName: string;
+  lenderName: string;
+  principalAmount: number;
+
+  enteredInterestRate: number;
+  enteredInterestRateFrequency: InterestRateFrequency;
+
+  derivedAnnualInterestRate: number;
+  derivedMonthlyInterestRate: number;
+
+  startDate: Date | Timestamp | string;
+  durationValue: number;
+  durationUnit: DebtDurationUnit;
+  durationMonths: number;
+
+  status: DebtStatus;
+  isActive: boolean;
+
+  feeItems: DebtFeeItem[];
+  totalCharges: number;
+
+  monthlyEmi: number;
+  totalPrincipalPaid: number;
+  totalInterestPaid: number;
+  totalScheduledPayable: number;
+
+  // Plaintext — not encrypted, needed for arrayUnion
+  paidMonths: string[];
+
+  // Custom per-month amounts (e.g. partial prepayment month); month is plaintext, amount encrypted
+  customMonthPayments?: { month: string; amount: number }[];
+
+  calculationSource: DebtCalculationSource;
+  userAcceptedCalculation: boolean;
+  emiOverrideValue?: number;
+  calculationExplanation?: string;
+
+  closedSummary?: DebtClosureSummary;
+
+  createdAt?: Date | Timestamp | string;
+  updatedAt?: Date | Timestamp | string;
+};

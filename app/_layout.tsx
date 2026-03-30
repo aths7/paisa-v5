@@ -102,6 +102,26 @@ function StackLayout() {
           headerShown: false,
         }}
       />
+      <Stack.Screen
+        name="(modals)/debtModal"
+        options={{
+          presentation: "modal",
+          animationDuration: 250,
+        }}
+      />
+      <Stack.Screen
+        name="(modals)/debtEditModal"
+        options={{
+          presentation: "modal",
+          animationDuration: 250,
+        }}
+      />
+      <Stack.Screen
+        name="debt/[id]"
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack>
   );
 }
