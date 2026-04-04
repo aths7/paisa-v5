@@ -2,7 +2,7 @@
   "expo": {
     "name": "Paisa Paisa",
     "slug": "paisa-v5",
-    "version": "1.0.0",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "paisav5",
@@ -13,7 +13,8 @@
       "bundleIdentifier": "com.aths7.paisav5",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "autoIncrement": true
     },
     "android": {
       "adaptiveIcon": {

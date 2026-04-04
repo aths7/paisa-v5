@@ -6,6 +6,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useEffect, useState } from "react";
 import "react-native-reanimated";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 // SplashScreen.preventAutoHideAsync();
@@ -128,8 +129,10 @@ function StackLayout() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <StackLayout />
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <AuthProvider>
+        <StackLayout />
+      </AuthProvider>
+    </GestureHandlerRootView>
   );
 }

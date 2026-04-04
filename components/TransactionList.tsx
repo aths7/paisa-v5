@@ -1,5 +1,5 @@
 import { StyleSheet, TouchableOpacity, View } from "react-native";
-import React from "react";
+import React, { useRef } from "react";
 import Typo from "./Typo";
 import { colors, radius, spacingX, spacingY } from "@/constants/theme";
 import {
@@ -18,6 +18,9 @@ import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { FlashList } from "@shopify/flash-list";
 import { useAuth } from "@/contexts/authContext";
 import { getEmotionColor } from "@/app/(modals)/emotionsModal";
+import ReanimatedSwipeable, { SwipeableMethods } from "react-native-gesture-handler/ReanimatedSwipeable";
+import { createOrUpdateTransaction, deleteTransaction } from "@/services/transactionService";
+import * as Haptics from "expo-haptics";
 
 const TransactionList = ({
   data,
@@ -105,6 +108,9 @@ const TransactionItem = ({
   handleClick,
 }: TransactionItemProps) => {
   const { user } = useAuth();
+  const swipeableRef = useRef<SwipeableMethods>(null);
+  const isDuplicating = useRef(false);
+
   const defaultExpenseCategory = {
     label: "Other",
     value: "other",
@@ -122,8 +128,43 @@ const TransactionItem = ({
     month: "short",
   });
 
-  //   console.log("date: ", date);
-  // string category.icon will match one of the keys from the Icons object, which is a valid icon component.
+  const handleDuplicate = async () => {
+    if (isDuplicating.current) return;
+    isDuplicating.current = true;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    swipeableRef.current?.close();
+    const { id, ...rest } = item;
+    await createOrUpdateTransaction({ ...rest, date: Timestamp.fromDate(new Date()) });
+    isDuplicating.current = false;
+  };
+
+  const handleDelete = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    swipeableRef.current?.close();
+    await deleteTransaction(item.id!, item.walletId);
+  };
+
+  const renderRightActions = (_progress: any, _translation: any, _swipeableMethods: SwipeableMethods) => (
+    <View style={styles.rightActions}>
+      <TouchableOpacity
+        style={[styles.actionButton, styles.duplicateButton]}
+        onPress={handleDuplicate}
+        activeOpacity={0.8}
+      >
+        <Icons.Copy size={verticalScale(20)} weight="fill" color={colors.white} />
+        <Typo size={11} fontWeight="600" color={colors.white}>Duplicate</Typo>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.actionButton, styles.deleteButton]}
+        onPress={handleDelete}
+        activeOpacity={0.8}
+      >
+        <Icons.Trash size={verticalScale(20)} weight="fill" color={colors.white} />
+        <Typo size={11} fontWeight="600" color={colors.white}>Delete</Typo>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <Animated.View
       entering={FadeInDown.delay(index * 50)
@@ -131,63 +172,72 @@ const TransactionItem = ({
         .damping(30)
         .mass(3)
         .stiffness(250)}
+      style={{ marginBottom: spacingY._12 }}
     >
-      <TouchableOpacity
-        style={[
-          styles.row,
-          {
-            borderLeftWidth: 3,
-            borderLeftColor: getEmotionColor(item.emotion, user?.emotionColors, user?.emotionTags),
-          },
-        ]}
-        onPress={() => handleClick(item)}
+      <ReanimatedSwipeable
+        ref={swipeableRef}
+        renderRightActions={renderRightActions}
+        rightThreshold={40}
+        overshootRight={false}
+        friction={2}
       >
-        <View style={[styles.icon, { backgroundColor: category.bgColor }]}>
-          {IconComponent && (
-            <IconComponent
-              size={verticalScale(25)}
-              weight="fill"
-              color={colors.white}
-            />
-          )}
-        </View>
+        <TouchableOpacity
+          style={[
+            styles.row,
+            {
+              borderLeftWidth: 3,
+              borderLeftColor: getEmotionColor(item.emotion, user?.emotionColors, user?.emotionTags),
+            },
+          ]}
+          onPress={() => handleClick(item)}
+        >
+          <View style={[styles.icon, { backgroundColor: category.bgColor }]}>
+            {IconComponent && (
+              <IconComponent
+                size={verticalScale(25)}
+                weight="fill"
+                color={colors.white}
+              />
+            )}
+          </View>
 
-        <View style={styles.categoryDes}>
-          <Typo size={17}>{category.label}</Typo>
-          <Typo
-            size={12}
-            color={colors.neutral400}
-            textProps={{ numberOfLines: 1 }}
-          >
-            {item?.description}
-          </Typo>
-          {item?.emotion && (
-            <View
-              style={[
-                styles.emotionBadge,
-                { backgroundColor: getEmotionColor(item.emotion, user?.emotionColors, user?.emotionTags) + "33" },
-              ]}
+          <View style={styles.categoryDes}>
+            <Typo size={17}>{category.label}</Typo>
+            <Typo
+              size={12}
+              color={colors.neutral400}
+              textProps={{ numberOfLines: 1 }}
             >
-              <Typo
-                size={11}
-                fontWeight="600"
-                color={getEmotionColor(item.emotion, user?.emotionColors, user?.emotionTags)}
+              {item?.description}
+            </Typo>
+            {item?.emotion && (
+              <View
+                style={[
+                  styles.emotionBadge,
+                  { backgroundColor: getEmotionColor(item.emotion, user?.emotionColors, user?.emotionTags) + "33" },
+                ]}
               >
-                {item.emotion.charAt(0).toUpperCase() + item.emotion.slice(1)}
-              </Typo>
-            </View>
-          )}
-        </View>
-        <View style={styles.amountDate}>
-          <Typo
-            fontWeight={"500"}
-            color={colors.green}
-          >{`₹${formatIndianNumber(Number(item?.amount))}`}</Typo>
-          <Typo size={13} color={colors.neutral400}>
-            {date}
-          </Typo>
-        </View>
-      </TouchableOpacity>
+                <Typo
+                  size={11}
+                  fontWeight="600"
+                  color={getEmotionColor(item.emotion, user?.emotionColors, user?.emotionTags)}
+                >
+                  {item.emotion.charAt(0).toUpperCase() + item.emotion.slice(1)}
+                </Typo>
+              </View>
+            )}
+          </View>
+          <View style={styles.amountDate}>
+            <Typo
+              fontWeight={"500"}
+              color={colors.green}
+            >{`₹${formatIndianNumber(Number(item?.amount))}`}</Typo>
+            <Typo size={13} color={colors.neutral400}>
+              {date}
+            </Typo>
+          </View>
+        </TouchableOpacity>
+      </ReanimatedSwipeable>
     </Animated.View>
   );
 };
@@ -208,13 +258,32 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     gap: spacingX._12,
-    marginBottom: spacingY._12,
 
     // list with background
     backgroundColor: colors.neutral800,
     padding: spacingY._10,
     paddingHorizontal: spacingY._10,
     borderRadius: radius._17,
+  },
+  rightActions: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    marginBottom: 0,
+    gap: scale(6),
+    paddingLeft: scale(8),
+  },
+  actionButton: {
+    width: scale(72),
+    justifyContent: "center",
+    alignItems: "center",
+    gap: verticalScale(4),
+    borderRadius: radius._17,
+  },
+  duplicateButton: {
+    backgroundColor: colors.primaryLight,
+  },
+  deleteButton: {
+    backgroundColor: colors.rose,
   },
   icon: {
     height: verticalScale(44),
