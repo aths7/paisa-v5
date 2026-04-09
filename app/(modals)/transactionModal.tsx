@@ -1,6 +1,6 @@
 import BackButton from "@/components/BackButton";
-import CollapsibleSection from "@/components/CollapsibleSection";
 import Button from "@/components/Button";
+import CollapsibleSection from "@/components/CollapsibleSection";
 import Header from "@/components/Header";
 import Input from "@/components/Input";
 import ModalWrapper from "@/components/ModalWrapper";
@@ -8,9 +8,8 @@ import Typo from "@/components/Typo";
 import { colors, radius, spacingX, spacingY } from "@/constants/theme";
 import { scale, verticalScale } from "@/utils/styling";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import * as Icons from "phosphor-react-native";
 import * as Haptics from "expo-haptics";
-import ConfettiCannon from "react-native-confetti-cannon";
+import * as Icons from "phosphor-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -24,47 +23,49 @@ import {
   TextInput,
   TouchableOpacity,
   View
-} from "react-native";
+} from "react-native"; // 2 columns
+import ConfettiCannon from "react-native-confetti-cannon";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import ImageUpload from "@/components/ImageUpload";
+import { DEFAULT_EXPENSE_CATEGORIES, expenseCategories } from "@/constants/data";
+import { useAuth } from "@/contexts/authContext";
+import useDecryptedData from "@/hooks/useDecryptedData";
+import { WALLET_NUMERIC_FIELDS, WALLET_STRING_FIELDS } from "@/services/encryptionService";
+import {
+  createOrUpdateTransaction,
+  deleteTransaction,
+} from "@/services/transactionService";
+import { updateEmotionTags, updateExpenseCategories } from "@/services/userService";
+import { createOrUpdateWallet } from "@/services/walletService";
+import { PurchaseStyle, TransactionType, WalletType } from "@/types";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { orderBy } from "firebase/firestore";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 const FORM_H_PAD = scale(20) * 2;
 const PILL_GAP = scale(8);
 const emotionPillW = (SCREEN_W - FORM_H_PAD - PILL_GAP * 3) / 4; // 4 columns
 const categoryPillW = (SCREEN_W - FORM_H_PAD - PILL_GAP * 2) / 3; // 3 columns
-const walletPillW = (SCREEN_W - FORM_H_PAD - PILL_GAP) / 2;       // 2 columns
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-import ImageUpload from "@/components/ImageUpload";
-import { DEFAULT_EXPENSE_CATEGORIES, expenseCategories } from "@/constants/data";
-import { useAuth } from "@/contexts/authContext";
-import { PurchaseStyle } from "@/types";
-import useDecryptedData from "@/hooks/useDecryptedData";
-import { WALLET_STRING_FIELDS, WALLET_NUMERIC_FIELDS } from "@/services/encryptionService";
-import {
-  createOrUpdateTransaction,
-  deleteTransaction,
-} from "@/services/transactionService";
-import { updateExpenseCategories, updateEmotionTags } from "@/services/userService";
-import { createOrUpdateWallet } from "@/services/walletService";
-import { TransactionType, WalletType } from "@/types";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { orderBy } from "firebase/firestore";
+const walletPillW = (SCREEN_W - FORM_H_PAD - PILL_GAP) / 2;
 
 // ─── Numpad key layout ────────────────────────────────────────────────────────
 const NUMPAD_KEYS = [
-  ["1", "2", "3"],
-  ["4", "5", "6"],
-  ["7", "8", "9"],
-  [".", "0", "⌫"],
+  ["7", "8", "9", "+"],
+  ["4", "5", "6", "-"],
+  ["1", "2", "3", "/"],
+  [".", "0", "⌫", "C"],
 ];
 
 const KEY_GAP = scale(12);
-const KEY_COLS = 3;
+const KEY_COLS = 4;
 const KEY_W = (SCREEN_W - FORM_H_PAD - KEY_GAP * (KEY_COLS - 1)) / KEY_COLS;
 const KEY_H = verticalScale(64);
+const CALCULATOR_OPERATORS = ["+", "-", "/"] as const;
 
 // ─── Step 1: Amount entry ─────────────────────────────────────────────────────
 interface AmountStepProps {
+  expression: string;
   amountStr: string;
   onKey: (key: string) => void;
   onContinue: () => void;
@@ -79,12 +80,83 @@ const formatAmountDisplay = (str: string): string => {
   return decPart !== undefined ? `${formatted}.${decPart}` : formatted;
 };
 
-const AmountStep = ({ amountStr, onKey, onContinue, onClose, insets }: AmountStepProps) => {
-  const display = formatAmountDisplay(amountStr);
-  const isEmpty = !amountStr;
+const normalizeCalculatedAmount = (value: number): string => {
+  if (!Number.isFinite(value)) return "";
+  const rounded = Math.round(value * 100) / 100;
+  return rounded.toFixed(2).replace(/\.?0+$/, "");
+};
+
+const evaluateCalculatorExpression = (expr: string): number | null => {
+  const trimmed = expr.trim();
+  if (!trimmed) return null;
+
+  const tokens = trimmed.match(/(\d+\.\d+|\d+\.|\.\d+|\d+|[+\-/])/g);
+  if (!tokens || tokens.join("") !== trimmed) return null;
+  if (CALCULATOR_OPERATORS.includes(tokens[0] as typeof CALCULATOR_OPERATORS[number])) return null;
+
+  const values: number[] = [];
+  const ops: string[] = [];
+
+  for (const token of tokens) {
+    if (CALCULATOR_OPERATORS.includes(token as typeof CALCULATOR_OPERATORS[number])) {
+      if (ops.length >= values.length) return null;
+      ops.push(token);
+      continue;
+    }
+
+    const parsed = Number(token);
+    if (!Number.isFinite(parsed)) return null;
+    values.push(parsed);
+  }
+
+  if (values.length === 0 || ops.length !== values.length - 1) return null;
+
+  const collapsedValues = [values[0]];
+  const collapsedOps: string[] = [];
+
+  for (let i = 0; i < ops.length; i += 1) {
+    const op = ops[i];
+    const nextValue = values[i + 1];
+
+    if (op === "/") {
+      if (nextValue === 0) return null;
+      collapsedValues[collapsedValues.length - 1] =
+        collapsedValues[collapsedValues.length - 1] / nextValue;
+      continue;
+    }
+
+    collapsedOps.push(op);
+    collapsedValues.push(nextValue);
+  }
+
+  let result = collapsedValues[0];
+  for (let i = 0; i < collapsedOps.length; i += 1) {
+    const op = collapsedOps[i];
+    const nextValue = collapsedValues[i + 1];
+    result = op === "+" ? result + nextValue : result - nextValue;
+  }
+
+  return Number.isFinite(result) ? result : null;
+};
+
+const formatExpressionDisplay = (expr: string): string => {
+  if (!expr) return "0";
+  return expr
+    .replace(/\//g, " ∕ ")
+    .replace(/\+/g, " + ")
+    .replace(/-/g, " - ")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+const AmountStep = ({ expression, amountStr, onKey, onContinue, onClose, insets }: AmountStepProps) => {
+  const resultDisplay = formatAmountDisplay(amountStr);
+  const expressionDisplay = formatExpressionDisplay(expression);
+  const isEmpty = !expression;
 
   // Shrink font as number grows
-  const fontSize = display.length > 10 ? scale(36) : display.length > 7 ? scale(44) : scale(56);
+  const fontSize =
+    resultDisplay.length > 10 ? scale(36) : resultDisplay.length > 7 ? scale(44) : scale(56);
 
   return (
     <View style={[amtStyles.root, { paddingTop: insets.top + verticalScale(12), paddingBottom: insets.bottom + verticalScale(12) }]}>
@@ -95,6 +167,14 @@ const AmountStep = ({ amountStr, onKey, onContinue, onClose, insets }: AmountSte
 
       {/* Amount display */}
       <View style={amtStyles.amountArea}>
+        <Typo
+          size={scale(16)}
+          fontWeight="400"
+          color={isEmpty ? colors.neutral700 : colors.neutral400}
+          style={amtStyles.expressionText}
+        >
+          {expressionDisplay}
+        </Typo>
         <View style={amtStyles.amountRow}>
           <Typo
             size={fontSize * 0.48}
@@ -109,7 +189,7 @@ const AmountStep = ({ amountStr, onKey, onContinue, onClose, insets }: AmountSte
             color={isEmpty ? colors.neutral700 : colors.white}
             style={{ letterSpacing: -1 }}
           >
-            {display}
+            {resultDisplay}
           </Typo>
         </View>
       </View>
@@ -121,14 +201,22 @@ const AmountStep = ({ amountStr, onKey, onContinue, onClose, insets }: AmountSte
             {row.map((key) => (
               <TouchableOpacity
                 key={key}
-                style={amtStyles.key}
+                style={[
+                  amtStyles.key,
+                  CALCULATOR_OPERATORS.includes(key as typeof CALCULATOR_OPERATORS[number]) && amtStyles.operatorKey,
+                  key === "C" && amtStyles.clearKey,
+                ]}
                 onPress={() => onKey(key)}
                 activeOpacity={0.6}
               >
                 {key === "⌫" ? (
                   <Icons.Backspace size={scale(26)} color={colors.neutral200} weight="regular" />
                 ) : (
-                  <Typo size={scale(28)} fontWeight="300" color={colors.white}>
+                  <Typo
+                    size={scale(28)}
+                    fontWeight="300"
+                    color={key === "C" ? colors.black : colors.white}
+                  >
                     {key}
                   </Typo>
                 )}
@@ -141,9 +229,8 @@ const AmountStep = ({ amountStr, onKey, onContinue, onClose, insets }: AmountSte
       {/* Continue button */}
       <View style={[amtStyles.continueWrapper, { paddingHorizontal: spacingX._20 }]}>
         <Button
-          onPress={onContinue}
-          disabled={isEmpty}
-          style={[amtStyles.continueBtn, isEmpty && { opacity: 0.4 }]}
+          onPress={isEmpty ? undefined : onContinue}
+          style={{ ...amtStyles.continueBtn, ...(isEmpty ? { opacity: 0.4 } : {}) }}
         >
           <Typo color={colors.black} size={18} fontWeight="700">
             Continue
@@ -169,6 +256,10 @@ const amtStyles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    gap: verticalScale(14),
+  },
+  expressionText: {
+    minHeight: verticalScale(22),
   },
   amountRow: {
     flexDirection: "row",
@@ -191,6 +282,13 @@ const amtStyles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: radius._15,
     borderCurve: "continuous",
+    backgroundColor: colors.neutral900,
+  },
+  operatorKey: {
+    backgroundColor: colors.neutral900,
+  },
+  clearKey: {
+    backgroundColor: colors.primary,
   },
   continueWrapper: {
     paddingTop: verticalScale(12),
@@ -267,6 +365,7 @@ const TransactionModal = () => {
 
   const [loading, setLoading] = useState(false);
   const [amountStr, setAmountStr] = useState("");
+  const [calculatorExpression, setCalculatorExpression] = useState("");
   const [showConfetti, setShowConfetti] = useState(false);
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategoryText, setNewCategoryText] = useState("");
@@ -308,7 +407,9 @@ const TransactionModal = () => {
   useEffect(() => {
     if (oldTransaction?.id) {
       const amt = Number(oldTransaction.amount);
-      setAmountStr(amt ? amt.toString() : "");
+      const initialAmount = amt ? amt.toString() : "";
+      setAmountStr(initialAmount);
+      setCalculatorExpression(initialAmount);
       setTransaction({
         type: oldTransaction.type,
         amount: amt,
@@ -323,35 +424,79 @@ const TransactionModal = () => {
     }
   }, []);
 
-  // ── Numpad key handler ────────────────────────────────────────────────────
+  const syncAmountFromExpression = (expr: string) => {
+    const evaluated = evaluateCalculatorExpression(expr);
+    const normalized = evaluated !== null ? normalizeCalculatedAmount(evaluated) : "";
+    if (!expr) {
+      setAmountStr("");
+      setTransaction((t) => ({ ...t, amount: 0 }));
+      return;
+    }
+
+    if (!normalized) return;
+
+    setAmountStr(normalized);
+    setTransaction((t) => ({ ...t, amount: Number(normalized) }));
+  };
+
+  const appendDigitOrDecimal = (expr: string, key: string) => {
+    const lastOperatorIndex = Math.max(expr.lastIndexOf("+"), expr.lastIndexOf("-"), expr.lastIndexOf("/"));
+    const currentSegment = expr.slice(lastOperatorIndex + 1);
+
+    if (key === ".") {
+      if (currentSegment.includes(".")) return expr;
+      if (!currentSegment) return `${expr}0.`;
+      return `${expr}.`;
+    }
+
+    if (currentSegment === "0") return `${expr.slice(0, -1)}${key}`;
+    return `${expr}${key}`;
+  };
+
   const handleKey = (key: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    setAmountStr((prev) => {
+    setCalculatorExpression((prev) => {
       if (key === "⌫") {
         const next = prev.slice(0, -1);
-        setTransaction((t) => ({ ...t, amount: parseFloat(next) || 0 }));
+        syncAmountFromExpression(next);
         return next;
       }
-      if (key === ".") {
-        if (prev.includes(".")) return prev; // only one decimal
-        const next = prev === "" ? "0." : prev + ".";
-        setTransaction((t) => ({ ...t, amount: parseFloat(next) || 0 }));
+      if (key === "C") {
+        syncAmountFromExpression("");
+        return "";
+      }
+
+      if (CALCULATOR_OPERATORS.includes(key as typeof CALCULATOR_OPERATORS[number])) {
+        if (!prev) return prev;
+        const lastChar = prev[prev.length - 1];
+        if (CALCULATOR_OPERATORS.includes(lastChar as typeof CALCULATOR_OPERATORS[number]) || lastChar === ".") {
+          return prev;
+        }
+        const next = `${prev}${key}`;
+        syncAmountFromExpression(next);
         return next;
       }
-      // digit
-      if (prev === "0") {
-        // replace leading zero
-        setTransaction((t) => ({ ...t, amount: parseFloat(key) || 0 }));
-        return key;
-      }
-      // guard: max 2 decimal places
-      const dotIdx = prev.indexOf(".");
-      if (dotIdx !== -1 && prev.length - dotIdx > 2) return prev;
-      const next = prev + key;
-      setTransaction((t) => ({ ...t, amount: parseFloat(next) || 0 }));
+
+      const next = appendDigitOrDecimal(prev, key);
+      if (next === prev) return prev;
+      syncAmountFromExpression(next);
       return next;
     });
+  };
+
+  const handleContinueFromAmount = () => {
+    const evaluated = evaluateCalculatorExpression(calculatorExpression);
+    const normalized = evaluated !== null ? normalizeCalculatedAmount(evaluated) : "";
+    if (!normalized || Number(normalized) <= 0) {
+      Alert.alert("Transaction", "Please enter a valid amount.");
+      return;
+    }
+
+    setCalculatorExpression(normalized);
+    setAmountStr(normalized);
+    setTransaction((t) => ({ ...t, amount: Number(normalized) }));
+    setStep(2);
   };
 
   const handleAddEmotion = async () => {
@@ -451,7 +596,7 @@ const TransactionModal = () => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setShowConfetti(true);
 
-        const streakResult = res.data?.streak;
+        const streakResult = "data" in res ? res.data?.streak : undefined;
         if (streakResult?.isFirstToday) {
           setTimeout(() => {
             router.replace({
@@ -510,9 +655,10 @@ const TransactionModal = () => {
   if (step === 1) {
     return (
       <AmountStep
+        expression={calculatorExpression}
         amountStr={amountStr}
         onKey={handleKey}
-        onContinue={() => setStep(2)}
+        onContinue={handleContinueFromAmount}
         onClose={() => router.back()}
         insets={insets}
       />
